@@ -2,99 +2,154 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, user-scalable=no">
+
     <title>Snake of Jura</title>
+
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-    <canvas id="gameCanvas"></canvas>
+    <!-- ================= LOGIN ================= -->
 
-    <!-- LOGIN -->
-    <div id="loginScreen" class="screen">
+    <div id="loginPage" class="page">
+
+        <div class="cloud cloud1"></div>
+        <div class="cloud cloud2"></div>
+        <div class="cloud cloud3"></div>
+
+        <div class="heart heart1">♥</div>
+        <div class="heart heart2">♥</div>
 
         <h1>SNAKE</h1>
+
         <h2>Snake of Jura</h2>
 
-        <div id="cuteSnake">
+        <div class="cute-snake">
             <div class="snake-head">
-                <span class="eye left-eye"></span>
-                <span class="eye right-eye"></span>
-                <span class="cheek left-cheek"></span>
-                <span class="cheek right-cheek"></span>
-                <span class="mouth"></span>
+                <div class="eye left-eye"></div>
+                <div class="eye right-eye"></div>
+                <div class="cheek left-cheek"></div>
+                <div class="cheek right-cheek"></div>
+                <div class="mouth"></div>
             </div>
 
-            <div class="snake-body blue"></div>
-            <div class="snake-body purple"></div>
+            <div class="snake-body body-blue"></div>
+            <div class="snake-body body-purple"></div>
         </div>
 
-        <p>Ayo bantu ular mencari makanan!</p>
+        <p class="help">
+            Ayo bantu ular mencari makanan!
+        </p>
 
-        <button id="playButton">MULAI GAME</button>
-        <button id="exitButton">KELUAR</button>
+        <button id="startButton" class="main-button start">
+            MULAI GAME
+        </button>
 
-    </div>
+        <button id="exitButton" class="main-button exit">
+            KELUAR
+        </button>
 
-
-    <!-- GAME UI -->
-    <div id="gameUI" class="hidden">
-
-        <button id="menuButton">MENU</button>
-
-        <div id="playerName">Pemain</div>
-
-        <div id="speedBox">
-            SPEED 5
-        </div>
-
-        <div id="scoreBox">
-            SKOR 0
-        </div>
-
-
-        <!-- JOYSTICK -->
-        <div id="controls">
-
-            <button data-direction="up">▲</button>
-
-            <button data-direction="left">◀</button>
-
-            <button data-direction="down">▼</button>
-
-            <button data-direction="right">▶</button>
-
+        <div class="flowers">
+            <span>🌸</span>
+            <span>🌷</span>
+            <span>🌼</span>
+            <span>🌸</span>
+            <span>🌷</span>
         </div>
 
     </div>
 
 
-    <!-- GAME OVER -->
-    <div id="gameOver" class="hidden">
+    <!-- ================= GAME ================= -->
 
-        <div class="panel">
+    <div id="gamePage" class="page game-page hidden">
 
-            <div class="heart">♥</div>
-            <div class="heart right">♥</div>
+        <canvas id="gameCanvas"></canvas>
 
-            <h2>GAME OVER</h2>
+        <div class="top-menu">
 
-            <div class="info">
-                SKOR <span id="finalScore">0</span>
-            </div>
-
-            <div class="info speed">
-                SPEED <span id="finalSpeed">5</span>
-            </div>
-
-            <button id="againButton">
-                MAIN LAGI
+            <button id="menuButton">
+                MENU
             </button>
 
-            <button id="backButton">
-                KEMBALI KE MENU
+            <span id="playerName">
+                Pemain
+            </span>
+
+            <div class="info speed-info">
+                SPEED <span id="speedText">5.0</span>
+            </div>
+
+            <div class="info score-info">
+                SKOR <span id="scoreText">0</span>
+            </div>
+
+        </div>
+
+
+        <!-- KONTROL HP -->
+
+        <div class="controls">
+
+            <button id="upButton">
+                ▲
             </button>
+
+            <div class="middle-controls">
+
+                <button id="leftButton">
+                    ◀
+                </button>
+
+                <button id="downButton">
+                    ▼
+                </button>
+
+                <button id="rightButton">
+                    ▶
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- GAME OVER -->
+
+        <div id="gameOver" class="game-over hidden">
+
+            <div class="game-over-box">
+
+                <div class="small-heart left-heart">
+                    ♥
+                </div>
+
+                <div class="small-heart right-heart">
+                    ♥
+                </div>
+
+                <h1>GAME OVER</h1>
+
+                <div class="result-box">
+                    SKOR <span id="finalScore">0</span>
+                </div>
+
+                <div class="result-speed">
+                    SPEED <span id="finalSpeed">5.0</span>
+                </div>
+
+                <button id="restartButton">
+                    MAIN LAGI
+                </button>
+
+                <button id="backButton">
+                    KEMBALI KE MENU
+                </button>
+
+            </div>
 
         </div>
 
