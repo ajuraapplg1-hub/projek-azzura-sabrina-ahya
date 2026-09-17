@@ -1,133 +1,122 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-const loginScreen = document.getElementById("loginScreen");
-const gameUI = document.getElementById("gameUI");
-const gameOverScreen = document.getElementById("gameOver");
+const loginPage = document.getElementById("loginPage");
+const gamePage = document.getElementById("gamePage");
 
-const playButton = document.getElementById("playButton");
+const startButton = document.getElementById("startButton");
 const exitButton = document.getElementById("exitButton");
 const menuButton = document.getElementById("menuButton");
-const againButton = document.getElementById("againButton");
+
+const restartButton = document.getElementById("restartButton");
 const backButton = document.getElementById("backButton");
 
-const scoreBox = document.getElementById("scoreBox");
-const speedBox = document.getElementById("speedBox");
+const gameOverBox = document.getElementById("gameOver");
+
+const scoreText = document.getElementById("scoreText");
+const speedText = document.getElementById("speedText");
 
 const finalScore = document.getElementById("finalScore");
 const finalSpeed = document.getElementById("finalSpeed");
 
-let WIDTH = window.innerWidth;
-let HEIGHT = window.innerHeight;
+const playerName = document.getElementById("playerName");
+
+
+/* ================= KONFIGURASI ================= */
 
 const GRID = 24;
 
+let WIDTH;
+let HEIGHT;
 
-/* =========================
-   WARNA
-========================= */
+let snake = [];
+let food = null;
+
+let direction = {
+    x: GRID,
+    y: 0
+};
+
+let nextDirection = {
+    x: GRID,
+    y: 0
+};
+
+let score = 0;
+let speed = 5;
+
+let gameOver = false;
+let gameRunning = false;
+
+let moveTimer = 0;
+let lastTime = 0;
+
+
+/* ================= WARNA ================= */
 
 const COLORS = {
-
     white: "#ffffff",
     black: "#413c46",
 
     pink: "#f591b4",
-    dpink: "#d74b7d",
-
-    light: "#ffeff6",
+    darkPink: "#d74b7d",
 
     green: "#69be6e",
-    dgreen: "#419150",
-    lgreen: "#e1f7dc",
+    darkGreen: "#419150",
 
     blue: "#69b9eb",
-    sky: "#96dcf8",
-
     purple: "#af7ddc",
 
-    yellow: "#ffd255",
-    orange: "#fa9b41",
-
-    red: "#eb4b5a",
-
-    cream: "#fff8dc",
+    sky: "#96dcf8",
 
     grass: "#afe17d",
     grassLight: "#c3eb91",
 
-    brown: "#7d5537",
-
-    leaf: "#5faf5f"
+    yellow: "#ffd255",
+    orange: "#fa9b41",
+    red: "#eb4b5a",
+    brown: "#7d5537"
 };
 
 
-/* =========================
-   WARNA ULAR
-========================= */
+/* ================= SNAKE COLORS ================= */
 
 const snakeColors = [
+    {
+        head: "#46a0e1",
+        body: "#69bef0",
+        light: "#9bd7fa"
+    },
 
-    [
-        "#46a0e1",
-        "#69bef0",
-        "#9bd7fa"
-    ],
+    {
+        head: "#4bb464",
+        body: "#73d27d",
+        light: "#a5ebaA"
+    },
 
-    [
-        "#4bb464",
-        "#73d27d",
-        "#a5ebaa"
-    ],
+    {
+        head: "#a064d7",
+        body: "#be87eb",
+        light: "#d7aff5"
+    },
 
-    [
-        "#a064d7",
-        "#be87eb",
-        "#d7aff5"
-    ],
+    {
+        head: "#f09637",
+        body: "#fab455",
+        light: "#ffd77d"
+    },
 
-    [
-        "#f09637",
-        "#fab455",
-        "#ffd77d"
-    ],
-
-    [
-        "#e14664",
-        "#f06e82",
-        "#faa0af"
-    ]
-
+    {
+        head: "#e14664",
+        body: "#f06e82",
+        light: "#faa0af"
+    }
 ];
 
-
-/* =========================
-   VARIABEL GAME
-========================= */
-
-let halaman = "login";
-
-let gameOver = false;
-
-let score = 0;
-
-let speed = 5;
-
-let color = 0;
-
-let direction = {
-    x: 1,
-    y: 0
-};
-
-let snake = [];
-
-let foods = [];
+let colorIndex = 0;
 
 
-/* =========================
-   RESIZE
-========================= */
+/* ================= RESIZE ================= */
 
 function resizeCanvas() {
 
@@ -138,632 +127,16 @@ function resizeCanvas() {
     canvas.height = HEIGHT;
 }
 
+window.addEventListener("resize", resizeCanvas);
 
-/* =========================
-   ROUNDED RECT
-========================= */
+resizeCanvas();
 
-function roundedRect(
-    x,
-    y,
-    w,
-    h,
-    r,
-    fill,
-    stroke = null,
-    lineWidth = 0
-) {
 
-    ctx.beginPath();
+/* ================= BACKGROUND GAME ================= */
 
-    ctx.roundRect(
-        x,
-        y,
-        w,
-        h,
-        r
-    );
+function drawGameBackground() {
 
-    ctx.fillStyle = fill;
-
-    ctx.fill();
-
-    if (stroke) {
-
-        ctx.strokeStyle = stroke;
-
-        ctx.lineWidth = lineWidth;
-
-        ctx.stroke();
-    }
-}
-
-
-/* =========================
-   LINGKARAN
-========================= */
-
-function circle(
-    x,
-    y,
-    r,
-    color
-) {
-
-    ctx.beginPath();
-
-    ctx.arc(
-        x,
-        y,
-        r,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.fillStyle = color;
-
-    ctx.fill();
-}
-
-
-/* =========================
-   CLOUD
-========================= */
-
-function drawCloud(
-    x,
-    y,
-    s
-) {
-
-    circle(
-        x,
-        y + 6,
-        s,
-        "#e1f3fa"
-    );
-
-    circle(
-        x + s,
-        y - s / 2 + 6,
-        s + 8,
-        "#e1f3fa"
-    );
-
-    circle(
-        x + s * 2,
-        y + 6,
-        s,
-        "#e1f3fa"
-    );
-
-
-    circle(
-        x,
-        y,
-        s,
-        COLORS.white
-    );
-
-    circle(
-        x + s,
-        y - s / 2,
-        s + 8,
-        COLORS.white
-    );
-
-    circle(
-        x + s * 2,
-        y,
-        s,
-        COLORS.white
-    );
-
-    ctx.fillStyle = COLORS.white;
-
-    ctx.fillRect(
-        x,
-        y,
-        s * 2,
-        s
-    );
-}
-
-
-/* =========================
-   HEART
-========================= */
-
-function drawHeart(
-    x,
-    y,
-    s,
-    color = COLORS.pink
-) {
-
-    circle(
-        x - s / 2,
-        y,
-        s / 2,
-        color
-    );
-
-    circle(
-        x + s / 2,
-        y,
-        s / 2,
-        color
-    );
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-        x - s,
-        y
-    );
-
-    ctx.lineTo(
-        x + s,
-        y
-    );
-
-    ctx.lineTo(
-        x,
-        y + s
-    );
-
-    ctx.fillStyle = color;
-
-    ctx.fill();
-}
-
-
-/* =========================
-   BUTTERFLY
-========================= */
-
-function drawButterfly(
-    x,
-    y,
-    scale = 1
-) {
-
-    const wingW = 16 * scale;
-    const wingH = 20 * scale;
-
-
-    ctx.fillStyle = COLORS.pink;
-
-    ctx.beginPath();
-
-    ctx.ellipse(
-        x - wingW / 2,
-        y,
-        wingW,
-        wingH,
-        0,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.fill();
-
-
-    ctx.fillStyle = COLORS.purple;
-
-    ctx.beginPath();
-
-    ctx.ellipse(
-        x + wingW / 2,
-        y,
-        wingW,
-        wingH,
-        0,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.fill();
-
-
-    ctx.fillStyle = COLORS.black;
-
-    ctx.beginPath();
-
-    ctx.ellipse(
-        x,
-        y,
-        4 * scale,
-        9 * scale,
-        0,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.fill();
-}
-
-
-/* =========================
-   FLOWER
-========================= */
-
-function drawFlower(
-    x,
-    y,
-    radius,
-    color
-) {
-
-    const positions = [
-
-        [0, -radius],
-        [-radius, 0],
-        [radius, 0],
-        [0, radius]
-
-    ];
-
-
-    positions.forEach(
-        ([dx, dy]) => {
-
-            circle(
-                x + dx,
-                y + dy,
-                radius,
-                color
-            );
-
-        }
-    );
-
-
-    circle(
-        x,
-        y,
-        Math.max(
-            2,
-            radius / 2
-        ),
-        COLORS.yellow
-    );
-}
-
-
-/* =========================
-   GRASS
-========================= */
-
-function drawGrass(
-    x,
-    y,
-    size = 1
-) {
-
-    const height = 28 * size;
-    const width = 10 * size;
-
-
-    ctx.lineWidth =
-        Math.max(
-            2,
-            3 * size
-        );
-
-
-    ctx.strokeStyle =
-        COLORS.dgreen;
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-        x,
-        y
-    );
-
-    ctx.lineTo(
-        x - width,
-        y - height
-    );
-
-    ctx.stroke();
-
-
-    ctx.strokeStyle =
-        COLORS.green;
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-        x,
-        y
-    );
-
-    ctx.lineTo(
-        x,
-        y - height - 5
-    );
-
-    ctx.stroke();
-
-
-    ctx.strokeStyle =
-        COLORS.dgreen;
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-        x,
-        y
-    );
-
-    ctx.lineTo(
-        x + width,
-        y - height + 2
-    );
-
-    ctx.stroke();
-}
-
-
-/* =========================
-   LOGIN BACKGROUND
-========================= */
-
-function loginBackground() {
-
-    const grassStart =
-        HEIGHT * .55;
-
-
-    ctx.fillStyle =
-        COLORS.sky;
-
-    ctx.fillRect(
-        0,
-        0,
-        WIDTH,
-        grassStart
-    );
-
-
-    ctx.fillStyle =
-        COLORS.lgreen;
-
-    ctx.fillRect(
-        0,
-        grassStart,
-        WIDTH,
-        HEIGHT - grassStart
-    );
-
-
-    drawCloud(
-        55,
-        90,
-        28
-    );
-
-    drawCloud(
-        WIDTH - 235,
-        105,
-        25
-    );
-
-    drawCloud(
-        WIDTH / 2 + 205,
-        58,
-        17
-    );
-
-    drawCloud(
-        WIDTH / 2 - 300,
-        165,
-        15
-    );
-
-
-    drawHeart(
-        52,
-        55,
-        22
-    );
-
-    drawHeart(
-        WIDTH - 52,
-        62,
-        22
-    );
-
-
-    for (
-        let i = 0;
-        i < 10;
-        i++
-    ) {
-
-        drawGrass(
-            20 + i * 35,
-            HEIGHT - 95 -
-            (i % 4) * 22,
-            .85
-        );
-
-        drawGrass(
-            WIDTH - 20 - i * 35,
-            HEIGHT - 95 -
-            (i % 4) * 22,
-            .85
-        );
-    }
-
-
-    const flowers = [
-
-        [45, -125, 8, COLORS.pink],
-        [92, -78, 7, COLORS.purple],
-        [140, -118, 8, COLORS.orange],
-        [188, -68, 7, COLORS.pink],
-        [235, -110, 8, COLORS.purple],
-        [282, -72, 7, COLORS.orange],
-        [325, -120, 7, COLORS.pink]
-
-    ];
-
-
-    flowers.forEach(
-        ([x, y, r, c]) => {
-
-            drawFlower(
-                x,
-                HEIGHT + y,
-                r,
-                c
-            );
-
-            drawFlower(
-                WIDTH - x,
-                HEIGHT + y,
-                r,
-                c
-            );
-
-        }
-    );
-
-
-    drawButterfly(
-        100,
-        HEIGHT - 170,
-        .85
-    );
-
-    drawButterfly(
-        230,
-        HEIGHT - 195,
-        .65
-    );
-
-    drawButterfly(
-        WIDTH - 100,
-        HEIGHT - 170,
-        .85
-    );
-
-    drawButterfly(
-        WIDTH - 230,
-        HEIGHT - 195,
-        .65
-    );
-}
-
-
-/* =========================
-   CUTE SNAKE
-========================= */
-
-function cuteSnake() {
-
-    const x =
-        WIDTH / 2;
-
-    const y =
-        HEIGHT / 2 - 65;
-
-
-    circle(
-        x,
-        y + 7,
-        38,
-        "#379155"
-    );
-
-    circle(
-        x,
-        y,
-        35,
-        COLORS.green
-    );
-
-    circle(
-        x - 50,
-        y + 20,
-        28,
-        COLORS.blue
-    );
-
-    circle(
-        x - 92,
-        y + 32,
-        24,
-        COLORS.purple
-    );
-
-
-    [-11, 11].forEach(
-        ex => {
-
-            circle(
-                x + ex,
-                y - 12,
-                9,
-                COLORS.white
-            );
-
-            circle(
-                x + ex,
-                y - 12,
-                4,
-                COLORS.black
-            );
-
-        }
-    );
-
-
-    circle(
-        x - 21,
-        y + 8,
-        5,
-        COLORS.pink
-    );
-
-    circle(
-        x + 21,
-        y + 8,
-        5,
-        COLORS.pink
-    );
-
-
-    ctx.strokeStyle =
-        COLORS.black;
-
-    ctx.lineWidth = 3;
-
-    ctx.beginPath();
-
-    ctx.arc(
-        x,
-        y + 1,
-        13,
-        0,
-        Math.PI
-    );
-
-    ctx.stroke();
-}
-
-
-/* =========================
-   GAME BACKGROUND
-========================= */
-
-function gameBackground() {
-
-    ctx.fillStyle =
-        COLORS.sky;
+    ctx.fillStyle = COLORS.sky;
 
     ctx.fillRect(
         0,
@@ -773,124 +146,148 @@ function gameBackground() {
     );
 
 
-    circle(
-        WIDTH - 120,
-        105,
-        55,
-        COLORS.yellow
+    /* matahari */
+
+    ctx.fillStyle = COLORS.yellow;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        WIDTH - 100,
+        90,
+        45,
+        0,
+        Math.PI * 2
     );
 
+    ctx.fill();
+
+
+    /* awan */
 
     drawCloud(
-        30,
-        105,
-        28
+        40,
+        100,
+        1
     );
 
     drawCloud(
-        WIDTH / 2 - 120,
+        WIDTH / 2 - 100,
         65,
-        16
+        0.6
     );
 
     drawCloud(
-        WIDTH - 430,
+        WIDTH - 400,
         120,
-        18
+        0.7
     );
 
 
-    /* GUNUNG */
+    /* pelangi */
 
-    ctx.fillStyle =
-        "#4baacb";
+    drawRainbow(
+        WIDTH / 2,
+        390,
+        220
+    );
+
+
+    /* gunung */
+
+    drawMountain(
+        WIDTH / 2 - 230,
+        430,
+        500,
+        250,
+        "#4baacb"
+    );
+
+    drawMountain(
+        WIDTH / 2 + 230,
+        430,
+        500,
+        250,
+        "#419bbd"
+    );
+
+
+    /* bukit */
+
+    ctx.fillStyle = "#78c36e";
 
     ctx.beginPath();
 
-    ctx.moveTo(
-        WIDTH / 2 - 515,
-        430
-    );
-
-    ctx.lineTo(
-        WIDTH / 2 - 382,
-        295
-    );
-
-    ctx.lineTo(
-        WIDTH / 2 - 250,
-        430
+    ctx.ellipse(
+        -100,
+        430,
+        WIDTH / 2 + 150,
+        100,
+        0,
+        0,
+        Math.PI * 2
     );
 
     ctx.fill();
 
 
-    ctx.fillStyle =
-        "#419bc3";
+    ctx.fillStyle = "#69b969";
 
     ctx.beginPath();
 
-    ctx.moveTo(
-        WIDTH / 2 - 10,
-        430
-    );
-
-    ctx.lineTo(
-        WIDTH / 2 + 125,
-        295
-    );
-
-    ctx.lineTo(
-        WIDTH / 2 + 390,
-        430
+    ctx.ellipse(
+        WIDTH,
+        430,
+        WIDTH / 2 + 150,
+        100,
+        0,
+        0,
+        Math.PI * 2
     );
 
     ctx.fill();
 
 
-    /* RUMPUT */
+    /* rumput */
 
-    ctx.fillStyle =
-        COLORS.grass;
+    const fieldTop = Math.min(
+        495,
+        HEIGHT * 0.65
+    );
+
+    ctx.fillStyle = COLORS.grass;
 
     ctx.fillRect(
         0,
-        495,
+        fieldTop,
         WIDTH,
-        HEIGHT - 495
+        HEIGHT - fieldTop
     );
 
 
+    /* pola rumput */
+
     const tile = 80;
 
+    ctx.fillStyle = COLORS.grassLight;
+
     for (
-        let row = 0;
-        row < HEIGHT;
-        row += tile
+        let y = fieldTop, row = 0;
+        y < HEIGHT;
+        y += tile, row++
     ) {
 
         for (
-            let col = 0;
-            col < WIDTH;
-            col += tile
+            let x = 0, col = 0;
+            x < WIDTH;
+            x += tile, col++
         ) {
 
-            if (
-                (row / tile +
-                 col / tile) % 2 === 0
-            ) {
-
-                ctx.fillStyle =
-                    COLORS.grassLight;
+            if ((row + col) % 2 === 0) {
 
                 ctx.fillRect(
-                    col,
-                    495 +
-                    row %
-                    Math.max(
-                        1,
-                        HEIGHT - 495
-                    ),
+                    x,
+                    y,
                     tile,
                     tile
                 );
@@ -899,384 +296,115 @@ function gameBackground() {
     }
 
 
-    circle(
-        85,
-        HEIGHT - 90,
-        24,
+    /* bunga */
+
+    drawFlower(
+        80,
+        HEIGHT - 80,
+        18,
         COLORS.pink
     );
 
-    circle(
+    drawFlower(
         220,
-        HEIGHT - 62,
-        18,
+        HEIGHT - 55,
+        14,
         COLORS.purple
     );
 
-    circle(
-        WIDTH - 85,
-        HEIGHT - 90,
-        24,
+    drawFlower(
+        WIDTH - 80,
+        HEIGHT - 80,
+        18,
         COLORS.pink
     );
 
-    circle(
+    drawFlower(
         WIDTH - 220,
-        HEIGHT - 62,
-        18,
+        HEIGHT - 55,
+        14,
         COLORS.purple
     );
 }
 
 
-/* =========================
-   MAKANAN
-========================= */
+/* ================= AWAN ================= */
 
-function newFood() {
+function drawCloud(x, y, scale) {
 
-    const fieldTop = 525;
+    ctx.fillStyle = "white";
 
-    const bottom =
-        HEIGHT - 170;
+    ctx.beginPath();
 
-
-    const minY =
-        Math.floor(
-            fieldTop / GRID
-        );
-
-    const maxY =
-        Math.max(
-            minY + 1,
-            Math.floor(
-                bottom / GRID
-            )
-        );
-
-
-    const x =
-        Math.floor(
-            2 +
-            Math.random() *
-            Math.max(
-                1,
-                WIDTH / GRID - 4
-            )
-        ) * GRID;
-
-
-    const y =
-        Math.floor(
-            minY +
-            Math.random() *
-            Math.max(
-                1,
-                maxY - minY
-            )
-        ) * GRID;
-
-
-    return {
-
-        x: x,
-        y: y,
-
-        type:
-            Math.floor(
-                Math.random() * 5
-            )
-
-    };
-}
-
-
-/* =========================
-   COLLISION MAKANAN
-========================= */
-
-function foodCollision(
-    food,
-    part
-) {
-
-    return (
-
-        food.x <
-        part.x + GRID &&
-
-        food.x + GRID >
-        part.x &&
-
-        food.y <
-        part.y + GRID &&
-
-        food.y + GRID >
-        part.y
-
+    ctx.ellipse(
+        x + 50 * scale,
+        y + 25 * scale,
+        70 * scale,
+        25 * scale,
+        0,
+        0,
+        Math.PI * 2
     );
+
+    ctx.fill();
+
+    ctx.beginPath();
+
+    ctx.arc(
+        x + 55 * scale,
+        y,
+        35 * scale,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+    ctx.beginPath();
+
+    ctx.arc(
+        x + 105 * scale,
+        y + 10 * scale,
+        30 * scale,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
 }
 
 
-/* =========================
-   CEK MAKANAN
-========================= */
+/* ================= PELANGI ================= */
 
-function validFood(food) {
+function drawRainbow(x, y, radius) {
 
-    if (
-        snake.some(
-            part =>
-                foodCollision(
-                    food,
-                    part
-                )
-        )
+    const colors = [
+        "#f064a0",
+        "#ffa05a",
+        "#ffd750",
+        "#69c37d",
+        "#50afe1",
+        "#966ed7"
+    ];
+
+    for (
+        let i = 0;
+        i < colors.length;
+        i++
     ) {
 
-        return false;
-    }
+        ctx.strokeStyle = colors[i];
 
-
-    if (
-        foods.some(
-            oldFood =>
-                foodCollision(
-                    food,
-                    oldFood
-                )
-        )
-    ) {
-
-        return false;
-    }
-
-
-    return true;
-}
-
-
-/* =========================
-   BUAT 5 MAKANAN
-========================= */
-
-function createFoods() {
-
-    foods = [];
-
-
-    while (
-        foods.length < 5
-    ) {
-
-        const food =
-            newFood();
-
-
-        if (
-            validFood(food)
-        ) {
-
-            foods.push(food);
-        }
-    }
-}
-
-
-/* =========================
-   GAMBAR MAKANAN
-========================= */
-
-function drawFood(food) {
-
-    const x =
-        food.x + GRID / 2;
-
-    const y =
-        food.y + GRID / 2;
-
-
-    /* APPLE */
-
-    if (food.type === 0) {
-
-        circle(
-            x,
-            y + 2,
-            9,
-            COLORS.red
-        );
-
-        circle(
-            x - 3,
-            y - 2,
-            3,
-            "#ff7882"
-        );
-
-        ctx.strokeStyle =
-            COLORS.brown;
-
-        ctx.lineWidth = 3;
-
-        ctx.beginPath();
-
-        ctx.moveTo(
-            x,
-            y - 8
-        );
-
-        ctx.lineTo(
-            x + 2,
-            y - 14
-        );
-
-        ctx.stroke();
-    }
-
-
-    /* GRAPE */
-
-    else if (
-        food.type === 1
-    ) {
-
-        [
-
-            [-6, 3],
-            [0, 5],
-            [6, 3],
-            [-3, -3],
-            [3, -3],
-            [0, -8]
-
-        ].forEach(
-            ([dx, dy]) => {
-
-                circle(
-                    x + dx,
-                    y + dy,
-                    4,
-                    COLORS.purple
-                );
-
-            }
-        );
-    }
-
-
-    /* BANANA */
-
-    else if (
-        food.type === 2
-    ) {
-
-        ctx.strokeStyle =
-            COLORS.yellow;
-
-        ctx.lineWidth = 7;
+        ctx.lineWidth = 13;
 
         ctx.beginPath();
 
         ctx.arc(
             x,
-            y + 1,
-            10,
-            .3,
-            3
-        );
-
-        ctx.stroke();
-    }
-
-
-    /* STRAWBERRY */
-
-    else if (
-        food.type === 3
-    ) {
-
-        ctx.fillStyle =
-            COLORS.red;
-
-        ctx.beginPath();
-
-        ctx.moveTo(
-            x,
-            y + 10
-        );
-
-        ctx.lineTo(
-            x - 9,
-            y - 2
-        );
-
-        ctx.lineTo(
-            x - 6,
-            y - 8
-        );
-
-        ctx.lineTo(
-            x + 6,
-            y - 8
-        );
-
-        ctx.lineTo(
-            x + 9,
-            y - 2
-        );
-
-        ctx.fill();
-    }
-
-
-    /* PINEAPPLE */
-
-    else {
-
-        ctx.fillStyle =
-            COLORS.yellow;
-
-        ctx.beginPath();
-
-        ctx.ellipse(
-            x,
             y,
-            8,
-            9,
-            0,
-            0,
+            radius - i * 13,
+            Math.PI,
             Math.PI * 2
-        );
-
-        ctx.fill();
-
-
-        ctx.strokeStyle =
-            COLORS.orange;
-
-        ctx.lineWidth = 1;
-
-        ctx.beginPath();
-
-        ctx.moveTo(
-            x - 7,
-            y - 3
-        );
-
-        ctx.lineTo(
-            x + 7,
-            y - 3
-        );
-
-        ctx.moveTo(
-            x - 7,
-            y + 3
-        );
-
-        ctx.lineTo(
-            x + 7,
-            y + 3
         );
 
         ctx.stroke();
@@ -1284,217 +412,448 @@ function drawFood(food) {
 }
 
 
-/* =========================
-   RESET GAME
-========================= */
+/* ================= GUNUNG ================= */
+
+function drawMountain(
+    x,
+    baseY,
+    width,
+    height,
+    color
+) {
+
+    ctx.fillStyle = color;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        x - width / 2,
+        baseY
+    );
+
+    ctx.lineTo(
+        x,
+        baseY - height
+    );
+
+    ctx.lineTo(
+        x + width / 2,
+        baseY
+    );
+
+    ctx.closePath();
+
+    ctx.fill();
+
+
+    ctx.fillStyle = "white";
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        x,
+        baseY - height
+    );
+
+    ctx.lineTo(
+        x - 50,
+        baseY - height / 2
+    );
+
+    ctx.lineTo(
+        x + 45,
+        baseY - height / 2
+    );
+
+    ctx.closePath();
+
+    ctx.fill();
+}
+
+
+/* ================= BUNGA ================= */
+
+function drawFlower(
+    x,
+    y,
+    radius,
+    color
+) {
+
+    ctx.fillStyle = color;
+
+    const positions = [
+        [0, -radius],
+        [-radius, 0],
+        [radius, 0],
+        [0, radius]
+    ];
+
+    positions.forEach(
+        ([dx, dy]) => {
+
+            ctx.beginPath();
+
+            ctx.arc(
+                x + dx,
+                y + dy,
+                radius,
+                0,
+                Math.PI * 2
+            );
+
+            ctx.fill();
+        }
+    );
+
+
+    ctx.fillStyle = COLORS.yellow;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        x,
+        y,
+        radius / 2,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+}
+
+
+/* ================= MAKANAN ================= */
+
+function createFood() {
+
+    let newFood;
+
+    let valid = false;
+
+    let attempts = 0;
+
+    while (!valid && attempts < 300) {
+
+        const maxX =
+            Math.floor(WIDTH / GRID) - 2;
+
+        const minY =
+            Math.floor(
+                Math.min(525, HEIGHT * 0.65) / GRID
+            );
+
+        const maxY =
+            Math.floor(
+                (HEIGHT - 170) / GRID
+            );
+
+        const x =
+            Math.floor(
+                Math.random() *
+                (maxX - 2)
+            ) + 2;
+
+        const y =
+            Math.floor(
+                Math.random() *
+                Math.max(1, maxY - minY)
+            ) + minY;
+
+        newFood = {
+            x: x * GRID,
+            y: y * GRID
+        };
+
+
+        valid = true;
+
+
+        for (const part of snake) {
+
+            if (
+                newFood.x === part.x &&
+                newFood.y === part.y
+            ) {
+
+                valid = false;
+
+                break;
+            }
+        }
+
+
+        attempts++;
+    }
+
+
+    if (valid) {
+
+        food = newFood;
+
+    } else {
+
+        /* posisi cadangan */
+
+        food = {
+            x: GRID * 3,
+            y: GRID * 23
+        };
+    }
+}
+
+
+/* ================= GAMBAR MAKANAN ================= */
+
+function drawFood() {
+
+    if (!food) {
+        return;
+    }
+
+    const x = food.x + GRID / 2;
+    const y = food.y + GRID / 2;
+
+
+    /* apel */
+
+    ctx.fillStyle = COLORS.red;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        x,
+        y + 2,
+        9,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+
+    /* kilau */
+
+    ctx.fillStyle = "#ff7885";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        x - 3,
+        y - 2,
+        3,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+
+    /* batang */
+
+    ctx.strokeStyle = COLORS.brown;
+
+    ctx.lineWidth = 3;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        x,
+        y - 7
+    );
+
+    ctx.lineTo(
+        x + 2,
+        y - 14
+    );
+
+    ctx.stroke();
+
+
+    /* daun */
+
+    ctx.fillStyle = COLORS.green;
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        x + 5,
+        y - 13,
+        6,
+        3,
+        0.2,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+}
+
+
+/* ================= RESET GAME ================= */
 
 function resetGame() {
 
-    const y =
+    const startY =
         Math.floor(
-            HEIGHT / 2 + 70
-        );
+            (HEIGHT / 2 + 70) / GRID
+        ) * GRID;
 
 
     snake = [
 
         {
-            x:
-                Math.floor(
-                    WIDTH / 2
-                ),
-
-            y: y
+            x: Math.floor(WIDTH / 2 / GRID) * GRID,
+            y: startY
         },
 
         {
             x:
-                Math.floor(
-                    WIDTH / 2
-                ) - GRID,
+                Math.floor(WIDTH / 2 / GRID) * GRID
+                - GRID,
 
-            y: y
+            y: startY
         },
 
         {
             x:
-                Math.floor(
-                    WIDTH / 2
-                ) - GRID * 2,
+                Math.floor(WIDTH / 2 / GRID) * GRID
+                - GRID * 2,
 
-            y: y
+            y: startY
         }
-
     ];
 
 
     direction = {
-        x: 1,
+        x: GRID,
+        y: 0
+    };
+
+
+    nextDirection = {
+        x: GRID,
         y: 0
     };
 
 
     score = 0;
 
-    color = 0;
-
     speed = 5;
+
+    colorIndex = 0;
+
+    moveTimer = 0;
 
     gameOver = false;
 
 
-    createFoods();
+    createFood();
 
-    updateUI();
+    updateInfo();
 }
 
 
-/* =========================
-   UPDATE UI
-========================= */
+/* ================= UPDATE SCORE ================= */
 
-function updateUI() {
+function updateInfo() {
 
-    scoreBox.textContent =
-        "SKOR " + score;
+    scoreText.textContent =
+        score;
 
-
-    speedBox.textContent =
-        "SPEED " +
+    speedText.textContent =
         speed.toFixed(1);
-
 
     finalScore.textContent =
         score;
-
 
     finalSpeed.textContent =
         speed.toFixed(1);
 }
 
 
-/* =========================
-   GERAK ULAR
-========================= */
+/* ================= ARAH ================= */
 
-function moveSnake() {
+function changeDirection(x, y) {
 
     if (
-        halaman !== "game" ||
+        x === -direction.x &&
+        y === -direction.y
+    ) {
+        return;
+    }
+
+
+    nextDirection = {
+        x: x,
+        y: y
+    };
+}
+
+
+/* ================= GERAK ULAR ================= */
+
+function updateGame(deltaTime) {
+
+    if (
+        !gameRunning ||
         gameOver
     ) {
+        return;
+    }
+
+
+    const moveInterval =
+        Math.max(
+            70,
+            1000 / speed
+        );
+
+
+    moveTimer += deltaTime;
+
+
+    if (
+        moveTimer < moveInterval
+    ) {
+        return;
+    }
+
+
+    moveTimer = 0;
+
+
+    direction = {
+        x: nextDirection.x,
+        y: nextDirection.y
+    };
+
+
+    const head = snake[0];
+
+
+    const newHead = {
+        x: head.x + direction.x,
+        y: head.y + direction.y
+    };
+
+
+    /* tabrak dinding */
+
+    if (
+        newHead.x < 0 ||
+        newHead.x + GRID > WIDTH ||
+        newHead.y < 0 ||
+        newHead.y + GRID > HEIGHT
+    ) {
+
+        endGame();
 
         return;
     }
 
 
-    const head = {
-
-        x:
-            snake[0].x +
-            direction.x * GRID,
-
-        y:
-            snake[0].y +
-            direction.y * GRID
-
-    };
-
-
-    snake.unshift(head);
-
-
-    let eaten = -1;
-
-
-    for (
-        let i = 0;
-        i < foods.length;
-        i++
-    ) {
-
-        if (
-            foodCollision(
-                foods[i],
-                head
-            )
-        ) {
-
-            eaten = i;
-
-            break;
-        }
-    }
-
-
-    if (
-        eaten !== -1
-    ) {
-
-        foods.splice(
-            eaten,
-            1
-        );
-
-
-        score++;
-
-
-        color =
-            (color + 1) %
-            snakeColors.length;
-
-
-        speed =
-            Math.min(
-                5 + score * .3,
-                10
-            );
-
-
-        while (true) {
-
-            const food =
-                newFood();
-
-
-            if (
-                validFood(food)
-            ) {
-
-                foods.push(food);
-
-                break;
-            }
-        }
-
-    } else {
-
-        snake.pop();
-    }
-
-
-    /* BATAS LAYAR */
-
-    if (
-
-        head.x < 0 ||
-
-        head.x + GRID >
-            WIDTH ||
-
-        head.y < 0 ||
-
-        head.y + GRID >
-            HEIGHT
-
-    ) {
-
-        gameOver = true;
-    }
-
-
-    /* TABRAKAN BADAN */
+    /* tabrak badan */
 
     for (
         let i = 1;
@@ -1503,580 +862,267 @@ function moveSnake() {
     ) {
 
         if (
-            foodCollision(
-                head,
-                snake[i]
-            )
+            newHead.x === snake[i].x &&
+            newHead.y === snake[i].y
         ) {
 
-            gameOver = true;
+            endGame();
 
-            break;
+            return;
         }
     }
 
 
-    updateUI();
+    snake.unshift(newHead);
 
+
+    /* makanan */
 
     if (
-        gameOver
+        food &&
+        newHead.x === food.x &&
+        newHead.y === food.y
     ) {
 
-        gameOverScreen.classList.remove(
-            "hidden"
+        score++;
+
+
+        /* kecepatan naik */
+
+        speed = Math.min(
+            10,
+            5 + score * 0.3
         );
+
+
+        colorIndex =
+            (colorIndex + 1)
+            % snakeColors.length;
+
+
+        createFood();
+
+
+        updateInfo();
+
+    } else {
+
+        snake.pop();
     }
 }
 
 
-/* =========================
-   GAMBAR ULAR
-========================= */
+/* ================= GAMBAR ULAR ================= */
 
 function drawSnake() {
 
     const colors =
-        snakeColors[color];
+        snakeColors[colorIndex];
 
 
     snake.forEach(
         (part, index) => {
 
-            let currentColor;
+            let color;
 
 
-            if (
-                index === 0
-            ) {
+            if (index === 0) {
 
-                currentColor =
-                    colors[0];
+                color =
+                    colors.head;
 
             } else if (
                 index % 2 === 0
             ) {
 
-                currentColor =
-                    colors[1];
+                color =
+                    colors.body;
 
             } else {
 
-                currentColor =
-                    colors[2];
+                color =
+                    colors.light;
             }
 
 
-            circle(
-
-                part.x +
-                    GRID / 2,
-
-                part.y +
-                    GRID / 2,
-
-                GRID / 2 + 3,
-
-                currentColor
-
-            );
-
-
-            ctx.strokeStyle =
-                COLORS.white;
-
-            ctx.lineWidth = 2;
+            ctx.fillStyle = color;
 
             ctx.beginPath();
 
             ctx.arc(
-
-                part.x +
-                    GRID / 2,
-
-                part.y +
-                    GRID / 2,
-
+                part.x + GRID / 2,
+                part.y + GRID / 2,
                 GRID / 2 + 3,
-
                 0,
                 Math.PI * 2
-
             );
 
-            ctx.stroke();
+            ctx.fill();
 
+
+            ctx.strokeStyle = "white";
+
+            ctx.lineWidth = 2;
+
+            ctx.stroke();
         }
     );
 
 
-    /* MATA */
+    drawEyes();
+}
 
-    const head =
-        snake[0];
+
+/* ================= MATA ULAR ================= */
+
+function drawEyes() {
+
+    if (!snake.length) {
+        return;
+    }
+
+
+    const head = snake[0];
 
     let eyes;
 
 
-    if (
-        direction.x === 1
-    ) {
+    if (direction.x > 0) {
 
         eyes = [
+            {
+                x: head.x + GRID - 6,
+                y: head.y + 6
+            },
 
-            [
-                head.x + GRID - 6,
-                head.y + 6
-            ],
-
-            [
-                head.x + GRID - 6,
-                head.y + GRID - 6
-            ]
-
+            {
+                x: head.x + GRID - 6,
+                y: head.y + GRID - 6
+            }
         ];
 
-    } else if (
-        direction.x === -1
-    ) {
+    } else if (direction.x < 0) {
 
         eyes = [
+            {
+                x: head.x + 6,
+                y: head.y + 6
+            },
 
-            [
-                head.x + 6,
-                head.y + 6
-            ],
-
-            [
-                head.x + 6,
-                head.y + GRID - 6
-            ]
-
+            {
+                x: head.x + 6,
+                y: head.y + GRID - 6
+            }
         ];
 
-    } else if (
-        direction.y === -1
-    ) {
+    } else if (direction.y < 0) {
 
         eyes = [
+            {
+                x: head.x + 6,
+                y: head.y + 6
+            },
 
-            [
-                head.x + 6,
-                head.y + 6
-            ],
-
-            [
-                head.x + GRID - 6,
-                head.y + 6
-            ]
-
+            {
+                x: head.x + GRID - 6,
+                y: head.y + 6
+            }
         ];
 
     } else {
 
         eyes = [
+            {
+                x: head.x + 6,
+                y: head.y + GRID - 6
+            },
 
-            [
-                head.x + 6,
-                head.y + GRID - 6
-            ],
-
-            [
-                head.x + GRID - 6,
-                head.y + GRID - 6
-            ]
-
+            {
+                x: head.x + GRID - 6,
+                y: head.y + GRID - 6
+            }
         ];
     }
 
 
     eyes.forEach(
-        ([x, y]) => {
+        eye => {
 
-            circle(
-                x,
-                y,
+            ctx.fillStyle =
+                "white";
+
+            ctx.beginPath();
+
+            ctx.arc(
+                eye.x,
+                eye.y,
                 5,
-                COLORS.white
+                0,
+                Math.PI * 2
             );
 
-            circle(
-                x,
-                y,
+            ctx.fill();
+
+
+            ctx.fillStyle =
+                COLORS.black;
+
+            ctx.beginPath();
+
+            ctx.arc(
+                eye.x,
+                eye.y,
                 2,
-                COLORS.black
+                0,
+                Math.PI * 2
             );
 
+            ctx.fill();
         }
     );
 }
 
 
-/* =========================
-   GAMBAR GAME
-========================= */
+/* ================= GAMBAR GAME ================= */
 
 function drawGame() {
 
-    gameBackground();
+    drawGameBackground();
 
-    foods.forEach(
-        drawFood
-    );
+    drawFood();
 
     drawSnake();
 }
 
 
-/* =========================
-   GAMBAR LOGIN
-========================= */
+/* ================= GAME LOOP ================= */
 
-function drawLogin() {
+function gameLoop(timestamp) {
 
-    loginBackground();
-}
-
-
-/* =========================
-   MULAI GAME
-========================= */
-
-function startGame() {
-
-    resetGame();
-
-
-    halaman = "game";
-
-
-    loginScreen.classList.add(
-        "hidden"
-    );
-
-    gameUI.classList.remove(
-        "hidden"
-    );
-
-    gameOverScreen.classList.add(
-        "hidden"
-    );
-}
-
-
-/* =========================
-   KEMBALI MENU
-========================= */
-
-function backToMenu() {
-
-    halaman = "login";
-
-    gameOver = false;
-
-
-    loginScreen.classList.remove(
-        "hidden"
-    );
-
-    gameUI.classList.add(
-        "hidden"
-    );
-
-    gameOverScreen.classList.add(
-        "hidden"
-    );
-}
-
-
-/* =========================
-   TOMBOL
-========================= */
-
-playButton.addEventListener(
-    "click",
-    startGame
-);
-
-
-exitButton.addEventListener(
-    "click",
-    () => {
-
-        window.location.href =
-            "about:blank";
-
-    }
-);
-
-
-menuButton.addEventListener(
-    "click",
-    backToMenu
-);
-
-
-againButton.addEventListener(
-    "click",
-    () => {
-
-        resetGame();
-
-        gameOverScreen.classList.add(
-            "hidden"
-        );
-
-    }
-);
-
-
-backButton.addEventListener(
-    "click",
-    backToMenu
-);
-
-
-/* =========================
-   JOYSTICK
-========================= */
-
-document
-    .querySelectorAll(
-        "#controls button"
-    )
-    .forEach(
-        button => {
-
-            button.addEventListener(
-                "pointerdown",
-                event => {
-
-                    event.preventDefault();
-
-
-                    const dir =
-                        button.dataset.direction;
-
-
-                    if (
-                        dir === "up" &&
-                        direction.y !== 1
-                    ) {
-
-                        direction = {
-                            x: 0,
-                            y: -1
-                        };
-
-                    } else if (
-                        dir === "down" &&
-                        direction.y !== -1
-                    ) {
-
-                        direction = {
-                            x: 0,
-                            y: 1
-                        };
-
-                    } else if (
-                        dir === "left" &&
-                        direction.x !== 1
-                    ) {
-
-                        direction = {
-                            x: -1,
-                            y: 0
-                        };
-
-                    } else if (
-                        dir === "right" &&
-                        direction.x !== -1
-                    ) {
-
-                        direction = {
-                            x: 1,
-                            y: 0
-                        };
-                    }
-
-                }
-            );
-
-        }
-    );
-
-
-/* =========================
-   KEYBOARD
-========================= */
-
-document.addEventListener(
-    "keydown",
-    event => {
-
-        if (
-            event.key === "Escape"
-        ) {
-
-            if (
-                halaman === "game"
-            ) {
-
-                backToMenu();
-
-            } else {
-
-                window.location.href =
-                    "about:blank";
-            }
-        }
-
-
-        if (
-            halaman !== "game" ||
-            gameOver
-        ) {
-
-            return;
-        }
-
-
-        const key =
-            event.key.toLowerCase();
-
-
-        if (
-            (
-                event.key === "ArrowUp" ||
-                key === "w"
-            ) &&
-            direction.y !== 1
-        ) {
-
-            direction = {
-                x: 0,
-                y: -1
-            };
-
-        } else if (
-            (
-                event.key === "ArrowDown" ||
-                key === "s"
-            ) &&
-            direction.y !== -1
-        ) {
-
-            direction = {
-                x: 0,
-                y: 1
-            };
-
-        } else if (
-            (
-                event.key === "ArrowLeft" ||
-                key === "a"
-            ) &&
-            direction.x !== 1
-        ) {
-
-            direction = {
-                x: -1,
-                y: 0
-            };
-
-        } else if (
-            (
-                event.key === "ArrowRight" ||
-                key === "d"
-            ) &&
-            direction.x !== -1
-        ) {
-
-            direction = {
-                x: 1,
-                y: 0
-            };
-        }
-
-    }
-);
-
-
-/* =========================
-   RESIZE
-========================= */
-
-window.addEventListener(
-    "resize",
-    () => {
-
-        resizeCanvas();
-
-
-        if (
-            halaman === "login"
-        ) {
-
-            drawLogin();
-
-        } else {
-
-            drawGame();
-        }
-
-    }
-);
-
-
-/* =========================
-   START
-========================= */
-
-resizeCanvas();
-
-drawLogin();
-
-
-let lastMove = 0;
-
-
-/* =========================
-   GAME LOOP
-========================= */
-
-function gameLoop(time) {
-
-    if (
-        halaman === "game" &&
-        !gameOver
-    ) {
-
-        const interval =
-            1000 / speed;
-
-
-        if (
-            time - lastMove >=
-            interval
-        ) {
-
-            moveSnake();
-
-            lastMove = time;
-        }
+    if (!lastTime) {
+        lastTime = timestamp;
     }
 
 
-    if (
-        halaman === "login"
-    ) {
+    let deltaTime =
+        timestamp - lastTime;
 
-        drawLogin();
 
-    } else {
+    lastTime = timestamp;
 
-        drawGame();
-    }
+
+    /*
+       Jika HP lag atau tab berpindah,
+       waktu tidak dibuat terlalu besar.
+    */
+
+    deltaTime =
+        Math.min(deltaTime, 100);
+
+
+    updateGame(deltaTime);
+
+    drawGame();
 
 
     requestAnimationFrame(
@@ -2084,6 +1130,280 @@ function gameLoop(time) {
     );
 }
 
+
+/* ================= GAME OVER ================= */
+
+function endGame() {
+
+    gameOver = true;
+
+    gameRunning = false;
+
+    updateInfo();
+
+    gameOverBox.classList.remove(
+        "hidden"
+    );
+}
+
+
+/* ================= MULAI GAME ================= */
+
+function startGame() {
+
+    loginPage.classList.add(
+        "hidden"
+    );
+
+    gamePage.classList.remove(
+        "hidden"
+    );
+
+
+    resetGame();
+
+
+    gameRunning = true;
+
+    gameOver = false;
+
+
+    gameOverBox.classList.add(
+        "hidden"
+    );
+
+
+    lastTime =
+        performance.now();
+}
+
+
+/* ================= KEMBALI MENU ================= */
+
+function backToMenu() {
+
+    gameRunning = false;
+
+    gameOver = false;
+
+
+    gameOverBox.classList.add(
+        "hidden"
+    );
+
+
+    gamePage.classList.add(
+        "hidden"
+    );
+
+    loginPage.classList.remove(
+        "hidden"
+    );
+}
+
+
+/* ================= TOMBOL START ================= */
+
+startButton.addEventListener(
+    "click",
+    startGame
+);
+
+
+/* ================= TOMBOL KELUAR ================= */
+
+exitButton.addEventListener(
+    "click",
+    function () {
+
+        /*
+           Browser tidak mengizinkan
+           JavaScript menutup tab biasa.
+
+           Jadi kita kembali ke halaman awal.
+        */
+
+        alert(
+            "Game selesai. Kamu bisa menutup tab ini."
+        );
+    }
+);
+
+
+/* ================= TOMBOL MENU ================= */
+
+menuButton.addEventListener(
+    "click",
+    backToMenu
+);
+
+
+/* ================= MAIN LAGI ================= */
+
+restartButton.addEventListener(
+    "click",
+    function () {
+
+        resetGame();
+
+        gameRunning = true;
+
+        gameOver = false;
+
+        gameOverBox.classList.add(
+            "hidden"
+        );
+    }
+);
+
+
+/* ================= KEMBALI MENU ================= */
+
+backButton.addEventListener(
+    "click",
+    backToMenu
+);
+
+
+/* ================= KEYBOARD ================= */
+
+document.addEventListener(
+    "keydown",
+    function (event) {
+
+        if (
+            !gameRunning ||
+            gameOver
+        ) {
+            return;
+        }
+
+
+        if (
+            event.key === "ArrowUp" ||
+            event.key.toLowerCase() === "w"
+        ) {
+
+            changeDirection(
+                0,
+                -GRID
+            );
+
+        } else if (
+            event.key === "ArrowDown" ||
+            event.key.toLowerCase() === "s"
+        ) {
+
+            changeDirection(
+                0,
+                GRID
+            );
+
+        } else if (
+            event.key === "ArrowLeft" ||
+            event.key.toLowerCase() === "a"
+        ) {
+
+            changeDirection(
+                -GRID,
+                0
+            );
+
+        } else if (
+            event.key === "ArrowRight" ||
+            event.key.toLowerCase() === "d"
+        ) {
+
+            changeDirection(
+                GRID,
+                0
+            );
+        }
+    }
+);
+
+
+/* ================= TOMBOL HP ================= */
+
+function buttonControl(
+    button,
+    x,
+    y
+) {
+
+    button.addEventListener(
+        "pointerdown",
+        function (event) {
+
+            event.preventDefault();
+
+            if (
+                gameRunning &&
+                !gameOver
+            ) {
+
+                changeDirection(
+                    x,
+                    y
+                );
+            }
+        }
+    );
+}
+
+
+buttonControl(
+    document.getElementById(
+        "upButton"
+    ),
+    0,
+    -GRID
+);
+
+
+buttonControl(
+    document.getElementById(
+        "downButton"
+    ),
+    0,
+    GRID
+);
+
+
+buttonControl(
+    document.getElementById(
+        "leftButton"
+    ),
+    -GRID,
+    0
+);
+
+
+buttonControl(
+    document.getElementById(
+        "rightButton"
+    ),
+    GRID,
+    0
+);
+
+
+/* ================= MENCEGAH SCROLL HP ================= */
+
+document.addEventListener(
+    "touchmove",
+    function (event) {
+
+        event.preventDefault();
+
+    },
+    {
+        passive: false
+    }
+);
+
+
+/* ================= LOOP ================= */
 
 requestAnimationFrame(
     gameLoop
