@@ -1,45 +1,112 @@
 * {
-    box-sizing: border-box;
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
 }
 
-html, body {
+html,
+body {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    font-family: Arial, sans-serif;
     background: #96dcf8;
-}
-
-body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-canvas {
-    display: block;
-    width: 100vw;
-    height: 100vh;
     touch-action: none;
 }
 
-#mobileHint {
-    position: fixed;
-    left: 50%;
-    bottom: 8px;
-    transform: translateX(-50%);
-    color: rgba(255,255,255,.8);
-    font-size: 12px;
-    font-weight: bold;
-    pointer-events: none;
-    text-align: center;
+body {
+    font-family: Arial, sans-serif;
 }
 
-@media (min-width: 700px) {
-    #mobileHint {
-        display: none;
+#game-container {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#touch-controls {
+    position: fixed;
+    right: 25px;
+    bottom: 25px;
+    width: 190px;
+    height: 145px;
+    display: grid;
+    grid-template-columns: 60px 60px 60px;
+    grid-template-rows: 60px 60px;
+    gap: 8px;
+    justify-content: center;
+    align-content: center;
+    pointer-events: none;
+}
+
+#touch-controls button {
+    width: 60px;
+    height: 60px;
+    border: 3px solid white;
+    border-radius: 18px;
+    background: #f591b4;
+    color: white;
+    font-size: 25px;
+    font-weight: bold;
+    box-shadow: 0 5px 0 #d74b7d;
+    pointer-events: auto;
+    touch-action: manipulation;
+}
+
+#touch-controls button:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #d74b7d;
+}
+
+#up {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+#left {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+#down {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+#right {
+    grid-column: 3;
+    grid-row: 2;
+}
+
+@media (orientation: portrait) and (max-width: 700px) {
+    #touch-controls {
+        right: 12px;
+        bottom: 18px;
+        transform: scale(0.9);
+        transform-origin: bottom right;
+    }
+}
+
+@media (max-width: 500px) {
+    #touch-controls {
+        right: 8px;
+        bottom: 12px;
+        transform: scale(0.78);
+    }
+}
+
+@media (min-width: 900px) {
+    #touch-controls {
+        right: 35px;
+        bottom: 30px;
+        transform: scale(1.05);
     }
 }
