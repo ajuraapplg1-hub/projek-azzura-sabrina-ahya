@@ -1,0 +1,560 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: #96dcf8;
+    touch-action: none;
+}
+
+body {
+    position: relative;
+}
+
+canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+
+/* =========================
+   LOGIN
+========================= */
+
+.screen {
+    position: fixed;
+    inset: 0;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    z-index: 5;
+}
+
+.screen h1 {
+    margin-top: 35px;
+
+    color: #d74b7d;
+
+    font-size: clamp(40px, 5vw, 70px);
+}
+
+.screen h2 {
+    margin-top: 8px;
+
+    color: #413c46;
+
+    font-size: clamp(22px, 3vw, 30px);
+}
+
+.screen p {
+    color: #419150;
+
+    font-weight: bold;
+
+    font-size: clamp(15px, 2vw, 23px);
+
+    margin-top: 10px;
+}
+
+
+/* =========================
+   CUTE SNAKE LOGIN
+========================= */
+
+#cuteSnake {
+    position: relative;
+
+    width: 230px;
+    height: 105px;
+
+    margin-top: 15px;
+}
+
+.snake-head {
+    position: absolute;
+
+    left: 85px;
+    top: 10px;
+
+    width: 70px;
+    height: 70px;
+
+    background: #69be6e;
+
+    border-radius: 50%;
+
+    box-shadow: 0 7px 0 #379155;
+}
+
+.snake-body {
+    position: absolute;
+
+    width: 56px;
+    height: 56px;
+
+    border-radius: 50%;
+
+    top: 30px;
+}
+
+.snake-body.blue {
+    left: 28px;
+    background: #69b9eb;
+}
+
+.snake-body.purple {
+    left: -5px;
+    top: 42px;
+
+    background: #af7ddc;
+}
+
+.eye {
+    position: absolute;
+
+    top: 16px;
+
+    width: 18px;
+    height: 18px;
+
+    background: white;
+
+    border-radius: 50%;
+}
+
+.eye::after {
+    content: "";
+
+    position: absolute;
+
+    width: 7px;
+    height: 7px;
+
+    background: #413c46;
+
+    border-radius: 50%;
+
+    left: 5px;
+    top: 5px;
+}
+
+.left-eye {
+    left: 11px;
+}
+
+.right-eye {
+    right: 11px;
+}
+
+.cheek {
+    position: absolute;
+
+    width: 10px;
+    height: 10px;
+
+    background: #f591b4;
+
+    border-radius: 50%;
+
+    top: 42px;
+}
+
+.left-cheek {
+    left: 5px;
+}
+
+.right-cheek {
+    right: 5px;
+}
+
+.mouth {
+    position: absolute;
+
+    width: 27px;
+    height: 15px;
+
+    border-bottom: 3px solid #413c46;
+
+    border-radius: 0 0 50% 50%;
+
+    left: 21px;
+    top: 36px;
+}
+
+
+/* =========================
+   BUTTON LOGIN
+========================= */
+
+.screen button,
+#againButton,
+#backButton {
+    border: 3px solid white;
+
+    border-radius: 24px;
+
+    color: white;
+
+    font-weight: bold;
+
+    cursor: pointer;
+}
+
+#playButton,
+#exitButton {
+    width: min(350px, calc(100% - 60px));
+
+    height: 65px;
+
+    font-size: clamp(20px, 2.5vw, 30px);
+}
+
+#playButton {
+    margin-top: 20px;
+
+    background: #69be6e;
+
+    box-shadow: 0 6px #419150;
+}
+
+#exitButton {
+    margin-top: 15px;
+
+    background: #d74b7d;
+
+    box-shadow: 0 6px #b9416e;
+}
+
+
+/* =========================
+   HIDDEN
+========================= */
+
+.hidden {
+    display: none !important;
+}
+
+
+/* =========================
+   GAME UI
+========================= */
+
+#gameUI {
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 4;
+
+    pointer-events: none;
+}
+
+#menuButton,
+#speedBox,
+#scoreBox {
+    position: absolute;
+
+    top: 8px;
+
+    height: 42px;
+
+    border-radius: 18px;
+
+    font-weight: bold;
+}
+
+#menuButton {
+    left: 12px;
+
+    width: 125px;
+
+    color: white;
+
+    background: #f591b4;
+
+    border: 0;
+
+    box-shadow: 0 4px #d74b7d;
+
+    pointer-events: auto;
+}
+
+#playerName {
+    position: absolute;
+
+    left: 157px;
+    top: 13px;
+
+    color: #d74b7d;
+
+    font-weight: bold;
+}
+
+#speedBox,
+#scoreBox {
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    background: white;
+
+    border: 2px solid #f591b4;
+
+    color: #d74b7d;
+}
+
+#speedBox {
+    right: 210px;
+
+    width: 185px;
+}
+
+#scoreBox {
+    right: 15px;
+
+    width: 195px;
+}
+
+
+/* =========================
+   JOYSTICK
+========================= */
+
+#controls {
+    position: absolute;
+
+    right: 35px;
+    bottom: 30px;
+
+    width: 180px;
+    height: 150px;
+
+    pointer-events: auto;
+}
+
+#controls button {
+    position: absolute;
+
+    width: 70px;
+    height: 55px;
+
+    border: 3px solid white;
+
+    border-radius: 18px;
+
+    background: #f591b4;
+
+    color: white;
+
+    font-size: 28px;
+
+    font-weight: bold;
+
+    box-shadow: 0 5px #d74b7d;
+}
+
+#controls button[data-direction="up"] {
+    left: 55px;
+    top: 0;
+}
+
+#controls button[data-direction="left"] {
+    left: 0;
+    top: 62px;
+}
+
+#controls button[data-direction="down"] {
+    left: 55px;
+    top: 62px;
+}
+
+#controls button[data-direction="right"] {
+    left: 110px;
+    top: 62px;
+}
+
+
+/* =========================
+   GAME OVER
+========================= */
+
+#gameOver {
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 10;
+
+    background: rgba(65, 60, 70, .57);
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+}
+
+.panel {
+    position: relative;
+
+    width: min(480px, calc(100% - 30px));
+
+    height: min(380px, calc(100% - 30px));
+
+    background: #ffeff6;
+
+    border: 5px solid #f591b4;
+
+    border-radius: 34px;
+
+    padding-top: 35px;
+
+    text-align: center;
+
+    box-shadow: 0 8px #28232d;
+}
+
+.panel h2 {
+    color: #d74b7d;
+
+    font-size: clamp(38px, 5vw, 65px);
+}
+
+.heart {
+    position: absolute;
+
+    left: 35px;
+    top: 25px;
+
+    color: #f591b4;
+
+    font-size: 35px;
+}
+
+.heart.right {
+    left: auto;
+    right: 35px;
+}
+
+.info {
+    width: min(330px, calc(100% - 50px));
+
+    height: 48px;
+
+    margin: 20px auto 0;
+
+    background: white;
+
+    border: 2px solid #f591b4;
+
+    border-radius: 18px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    color: #d74b7d;
+
+    font-weight: bold;
+
+    font-size: 25px;
+}
+
+.info.speed {
+    height: 45px;
+
+    margin-top: 9px;
+
+    border-color: #69be6e;
+
+    color: #419150;
+
+    font-size: 20px;
+}
+
+#againButton,
+#backButton {
+    width: min(240px, calc(100% - 50px));
+
+    height: 50px;
+
+    display: block;
+
+    margin-left: auto;
+    margin-right: auto;
+
+    font-size: 17px;
+}
+
+#againButton {
+    margin-top: 15px;
+
+    background: #69be6e;
+
+    box-shadow: 0 5px #419150;
+}
+
+#backButton {
+    margin-top: 10px;
+
+    background: #d74b7d;
+
+    box-shadow: 0 5px #b9416e;
+}
+
+
+/* =========================
+   HP
+========================= */
+
+@media (max-width: 700px) {
+
+    #menuButton {
+        width: 105px;
+        height: 38px;
+    }
+
+    #playerName {
+        left: 125px;
+
+        font-size: 15px;
+    }
+
+    #speedBox {
+        right: 150px;
+
+        width: 135px;
+
+        font-size: 13px;
+    }
+
+    #scoreBox {
+        right: 10px;
+
+        width: 130px;
+
+        font-size: 13px;
+    }
+
+    #controls {
+        right: 12px;
+        bottom: 18px;
+
+        transform: scale(.9);
+
+        transform-origin: bottom right;
+    }
+}
