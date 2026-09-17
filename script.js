@@ -1,79 +1,102 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-let WIDTH = window.innerWidth;
-let HEIGHT = window.innerHeight;
-
-canvas.width = WIDTH;
-canvas.height = HEIGHT;
+const GRID = 24;
 
 const WHITE = "#ffffff";
 const BLACK = "#413c46";
-
 const PINK = "#f591b4";
 const DPINK = "#d74b7d";
 const LIGHT = "#ffeff6";
-
 const GREEN = "#69be6e";
 const DGREEN = "#419150";
 const LGREEN = "#e1f7dc";
-
 const BLUE = "#69b9eb";
 const SKY = "#96dcf8";
-
 const PURPLE = "#af7ddc";
 const YELLOW = "#ffd255";
 const ORANGE = "#fa9b41";
-
 const RED = "#eb4b5a";
 const CREAM = "#fff8dc";
-
 const GRASS = "#afe17d";
 const GRASS_LIGHT = "#c3eb91";
-
 const BROWN = "#7d5537";
-
 const LEAF = "#5faf5f";
 const LEAF_LIGHT = "#87c873";
 
-const GRID = 24;
+let W = 0;
+let H = 0;
+let dpr = 1;
 
+let nama = "Pemain";
 let halaman = "login";
 let gameOver = false;
-let running = true;
-let nama = "Pemain";
 
 let snake = [];
+let direction = "right";
+let nextDirection = "right";
+
 let foods = [];
-let direction = { x: GRID, y: 0 };
-
 let score = 0;
-let color = 0;
 let speed = 5;
-const MAX_SPEED = 10;
 
-let moveTimer = 0;
 let lastTime = 0;
+let moveTimer = 0;
+
+let snakeColorIndex = 0;
 
 const snakeColors = [
-    ["#46a0e1", "#69bef0", "#9bd7fa"],
-    ["#4bb464", "#73d27d", "#a5ebaA"],
-    ["#a064d7", "#be87eb", "#d7aff5"],
-    ["#f09637", "#fab455", "#ffd77d"],
-    ["#e14664", "#f06e82", "#faa0af"]
+    {
+        body: "#69be6e",
+        dark: "#419150",
+        light: "#b8e8b2"
+    },
+    {
+        body: "#f591b4",
+        dark: "#d74b7d",
+        light: "#ffd0df"
+    },
+    {
+        body: "#69b9eb",
+        dark: "#408fc0",
+        light: "#c5ebff"
+    },
+    {
+        body: "#af7ddc",
+        dark: "#8052aa",
+        light: "#e2ccf4"
+    },
+    {
+        body: "#ffd255",
+        dark: "#e0a92d",
+        light: "#fff0a8"
+    }
+];
+
+const foodTypes = [
+    "apple",
+    "grapes",
+    "banana",
+    "strawberry",
+    "yellow"
 ];
 
 function resizeCanvas() {
-    WIDTH = window.innerWidth;
-    HEIGHT = window.innerHeight;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-    canvas.width = WIDTH;
-    canvas.height = HEIGHT;
+    W = window.innerWidth;
+    H = window.innerHeight;
+
+    canvas.width = Math.floor(W * dpr);
+    canvas.height = Math.floor(H * dpr);
+
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     if (halaman === "game") {
-        drawGame();
-    } else {
-        drawLogin();
+        ensureFoods();
     }
 }
 
@@ -82,974 +105,1219 @@ window.addEventListener("orientationchange", () => {
     setTimeout(resizeCanvas, 150);
 });
 
-function roundedRect(x, y, w, h, radius, fill, stroke = null, lineWidth = 1) {
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, radius);
+resizeCanvas();
 
-    if (fill) {
-        ctx.fillStyle = fill;
-        ctx.fill();
-    }
-
-    if (stroke) {
-        ctx.lineWidth = lineWidth;
-        ctx.strokeStyle = stroke;
-        ctx.stroke();
-    }
-}
-
-function heart(x, y, s, color = PINK) {
-    ctx.fillStyle = color;
+function roundRect(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
 
     ctx.beginPath();
-    ctx.arc(x - s / 2, y, s / 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(x + s / 2, y, s / 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(x - s, y);
-    ctx.lineTo(x + s, y);
-    ctx.lineTo(x, y + s);
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
     ctx.closePath();
-    ctx.fill();
 }
 
-function cloudOld(x, y, s) {
-    ctx.fillStyle = "#e1f3fa";
+function text(text, x, y, size, color = BLACK, align = "center", bold = false) {
+    ctx.fillStyle = color;
+    ctx.font = `${bold ? "bold " : ""}${size}px Arial`;
+    ctx.textAlign = align;
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, x, y);
+}
 
-    ctx.beginPath();
-    ctx.arc(x, y + 6, s, 0, Math.PI * 2);
-    ctx.arc(x + s, y - s / 2 + 6, s + 8, 0, Math.PI * 2);
-    ctx.arc(x + s * 2, y + 6, s, 0, Math.PI * 2);
+function button(x, y, w, h, label, color = PINK) {
+    ctx.fillStyle = "rgba(0,0,0,0.10)";
+    roundRect(x + 3, y + 5, w, h, 18);
     ctx.fill();
 
+    ctx.fillStyle = color;
+    roundRect(x, y, w, h, 18);
+    ctx.fill();
+
+    text(label, x + w / 2, y + h / 2, Math.max(14, Math.min(22, w / 15)), WHITE, "center", true);
+}
+
+function drawCloud(x, y, scale = 1) {
     ctx.fillStyle = WHITE;
 
     ctx.beginPath();
-    ctx.arc(x, y, s, 0, Math.PI * 2);
-    ctx.arc(x + s, y - s / 2, s + 8, 0, Math.PI * 2);
-    ctx.arc(x + s * 2, y, s, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillRect(x, y, s * 2, s);
-}
-
-function butterfly(x, y, scale = 1) {
-    const wingW = 16 * scale;
-    const wingH = 20 * scale;
-
-    ctx.fillStyle = PINK;
-    ctx.beginPath();
-    ctx.ellipse(
-        x - wingW / 2,
-        y,
-        wingW / 2,
-        wingH / 2,
-        0,
-        0,
-        Math.PI * 2
-    );
-    ctx.fill();
-
-    ctx.fillStyle = PURPLE;
-    ctx.beginPath();
-    ctx.ellipse(
-        x + wingW / 2,
-        y,
-        wingW / 2,
-        wingH / 2,
-        0,
-        0,
-        Math.PI * 2
-    );
-    ctx.fill();
-
-    ctx.fillStyle = YELLOW;
-    ctx.beginPath();
-    ctx.ellipse(
-        x - 11 * scale,
-        y - 11 * scale,
-        5.5 * scale,
-        7 * scale,
-        0,
-        0,
-        Math.PI * 2
-    );
-    ctx.fill();
-
-    ctx.fillStyle = ORANGE;
-    ctx.beginPath();
-    ctx.ellipse(
-        x + 5.5 * scale,
-        y - 11 * scale,
-        5.5 * scale,
-        7 * scale,
-        0,
-        0,
-        Math.PI * 2
-    );
-    ctx.fill();
-
-    ctx.fillStyle = BLACK;
-    ctx.beginPath();
-    ctx.ellipse(
-        x,
-        y,
-        Math.max(2, 2.5 * scale),
-        8 * scale,
-        0,
-        0,
-        Math.PI * 2
-    );
-    ctx.fill();
-}
-
-function cloudGame(x, y, scale) {
-    const w = 175 * scale;
-    const h = 65 * scale;
-
-    ctx.fillStyle = "#d7eef8";
-
-    ctx.beginPath();
-    ctx.ellipse(x + w / 2, y + 12 * scale, w / 2, h / 2, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = WHITE;
-
-    ctx.beginPath();
-    ctx.ellipse(
-        x + 40 * scale,
-        y + 30 * scale,
-        35 * scale,
-        30 * scale,
-        0,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.ellipse(
-        x + 86 * scale,
-        y + 13 * scale,
-        41 * scale,
-        41 * scale,
-        0,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.ellipse(
-        x + 135 * scale,
-        y + 30 * scale,
-        35 * scale,
-        30 * scale,
-        0,
-        0,
-        Math.PI * 2
-    );
-
+    ctx.arc(x, y, 24 * scale, 0, Math.PI * 2);
+    ctx.arc(x + 28 * scale, y - 13 * scale, 31 * scale, 0, Math.PI * 2);
+    ctx.arc(x + 65 * scale, y, 24 * scale, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillRect(
-        x + 20 * scale,
-        y + 25 * scale,
-        130 * scale,
-        38 * scale
+        x - 5 * scale,
+        y,
+        75 * scale,
+        25 * scale
     );
 }
 
-function sun(x, y, radius) {
-    ctx.strokeStyle = YELLOW;
-    ctx.lineWidth = 7;
+function drawSun() {
+    const x = W - 80;
+    const y = 70;
+    const r = Math.min(42, W * 0.09);
 
-    for (let angle = 0; angle < 360; angle += 45) {
-        const rad = angle * Math.PI / 180;
+    ctx.fillStyle = YELLOW;
 
-        const x1 = x + Math.cos(rad) * (radius + 12);
-        const y1 = y + Math.sin(rad) * (radius + 12);
-
-        const x2 = x + Math.cos(rad) * (radius + 30);
-        const y2 = y + Math.sin(rad) * (radius + 30);
-
+    for (let i = 0; i < 12; i++) {
+        const a = i * Math.PI / 6;
         ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
+        ctx.moveTo(
+            x + Math.cos(a) * (r + 8),
+            y + Math.sin(a) * (r + 8)
+        );
+        ctx.lineTo(
+            x + Math.cos(a) * (r + 20),
+            y + Math.sin(a) * (r + 20)
+        );
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = YELLOW;
         ctx.stroke();
     }
 
-    ctx.fillStyle = "#ffcd41";
     ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = "#ffe169";
-    ctx.beginPath();
-    ctx.arc(x - 7, y - 7, Math.max(1, radius - 11), 0, Math.PI * 2);
+    ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
 }
 
-function rainbow(x, y, radius) {
+function drawRainbow() {
+    const cx = W * 0.48;
+    const cy = Math.min(H * 0.42, 300);
+    const r = Math.min(W * 0.38, 230);
+
     const colors = [
-        "#f064a0",
-        "#ffa05a",
-        "#ffd750",
-        "#69c37d",
-        "#50afe1",
-        "#966ed7"
+        "#f06a7a",
+        "#f6b94a",
+        "#f8e05f",
+        "#70c96e",
+        "#68b9e8",
+        "#aa7bd1"
     ];
 
-    const thickness = 13;
-
-    colors.forEach((color, index) => {
-        const currentRadius = radius - index * thickness;
-
-        ctx.strokeStyle = color;
-        ctx.lineWidth = thickness;
+    for (let i = 0; i < colors.length; i++) {
         ctx.beginPath();
-
-        for (let i = 0; i <= 100; i++) {
-            const angle = Math.PI * i / 100;
-
-            const px = x + Math.cos(angle) * currentRadius;
-            const py = y - Math.sin(angle) * currentRadius;
-
-            if (i === 0) {
-                ctx.moveTo(px, py);
-            } else {
-                ctx.lineTo(px, py);
-            }
-        }
-
+        ctx.strokeStyle = colors[i];
+        ctx.lineWidth = 10;
+        ctx.arc(
+            cx,
+            cy,
+            r - i * 10,
+            Math.PI,
+            Math.PI * 2
+        );
         ctx.stroke();
-    });
+    }
 }
 
-function mountain(x, baseY, width, height, color) {
+function drawMountain(x, y, w, h, color) {
     ctx.fillStyle = color;
 
     ctx.beginPath();
-    ctx.moveTo(x - width / 2, baseY);
-    ctx.lineTo(x - width / 4, baseY - height / 2);
-    ctx.lineTo(x, baseY - height);
-    ctx.lineTo(x + width / 4, baseY - height / 2);
-    ctx.lineTo(x + width / 2, baseY);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = "rgba(0,0,0,0.12)";
-
-    ctx.beginPath();
-    ctx.moveTo(x, baseY - height);
-    ctx.lineTo(x - width / 2, baseY);
-    ctx.lineTo(x, baseY);
+    ctx.moveTo(x, y + h);
+    ctx.lineTo(x + w / 2, y);
+    ctx.lineTo(x + w, y + h);
     ctx.closePath();
     ctx.fill();
 
     ctx.fillStyle = WHITE;
-
     ctx.beginPath();
-    ctx.moveTo(x, baseY - height);
-    ctx.lineTo(x - width / 10, baseY - height / 2 + 8);
-    ctx.lineTo(x - width / 28, baseY - height / 2 - 5);
-    ctx.lineTo(x + width / 14, baseY - height / 2 + 12);
-    ctx.lineTo(x + width / 9, baseY - height / 3);
+    ctx.moveTo(x + w * 0.37, y + h * 0.28);
+    ctx.lineTo(x + w / 2, y);
+    ctx.lineTo(x + w * 0.63, y + h * 0.28);
+    ctx.lineTo(x + w * 0.55, y + h * 0.23);
+    ctx.lineTo(x + w / 2, y + h * 0.4);
+    ctx.lineTo(x + w * 0.45, y + h * 0.23);
     ctx.closePath();
     ctx.fill();
 }
 
-function hill(x, y, width, height, color) {
+function drawHill(x, y, w, h, color) {
     ctx.fillStyle = color;
     ctx.beginPath();
+    ctx.ellipse(x, y, w, h, 0, Math.PI, Math.PI * 2);
+    ctx.fill();
+}
+
+function drawFlower(x, y, size) {
+    ctx.strokeStyle = DGREEN;
+    ctx.lineWidth = 3;
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + size * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = LEAF;
+    ctx.beginPath();
     ctx.ellipse(
-        x + width / 2,
-        y + height / 2,
-        width / 2,
-        height / 2,
-        0,
+        x - size * 0.45,
+        y + size,
+        size * 0.65,
+        size * 0.3,
+        -0.4,
         0,
         Math.PI * 2
     );
     ctx.fill();
-}
-
-function bush(x, y, width, height, color) {
-    ctx.fillStyle = color;
 
     ctx.beginPath();
     ctx.ellipse(
-        x + width / 2,
-        y + height * 5 / 8,
-        width / 2,
-        height * 3 / 8,
-        0,
+        x + size * 0.45,
+        y + size * 1.3,
+        size * 0.65,
+        size * 0.3,
+        0.4,
         0,
         Math.PI * 2
     );
     ctx.fill();
 
-    ctx.beginPath();
-    ctx.arc(x + width / 4, y + height / 3, height / 2, 0, Math.PI * 2);
-    ctx.arc(x + width / 2, y + height / 5, height / 2, 0, Math.PI * 2);
-    ctx.arc(x + width * 3 / 4, y + height / 3, height / 2, 0, Math.PI * 2);
-    ctx.fill();
-}
-
-function flower(x, y, radius, color) {
-    const positions = [
-        [0, -radius],
-        [-radius, 0],
-        [radius, 0],
-        [0, radius]
-    ];
-
-    ctx.fillStyle = color;
-
-    positions.forEach(([dx, dy]) => {
+    ctx.fillStyle = PINK;
+    for (let i = 0; i < 5; i++) {
+        const a = i * Math.PI * 2 / 5;
         ctx.beginPath();
-        ctx.arc(x + dx, y + dy, radius, 0, Math.PI * 2);
+        ctx.arc(
+            x + Math.cos(a) * size * 0.7,
+            y + Math.sin(a) * size * 0.7,
+            size * 0.45,
+            0,
+            Math.PI * 2
+        );
         ctx.fill();
-    });
+    }
 
     ctx.fillStyle = YELLOW;
     ctx.beginPath();
-    ctx.arc(x, y, Math.max(2, radius / 2), 0, Math.PI * 2);
+    ctx.arc(x, y, size * 0.35, 0, Math.PI * 2);
     ctx.fill();
 }
 
-function grassPatch(x, y, size = 1) {
-    const height = 28 * size;
-    const width = 10 * size;
+function drawBush(x, y, size) {
+    ctx.fillStyle = DGREEN;
 
-    ctx.lineWidth = Math.max(2, 3 * size);
-
-    ctx.strokeStyle = DGREEN;
     ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x - width, y - height);
-    ctx.stroke();
+    ctx.arc(x, y, size * 0.65, 0, Math.PI * 2);
+    ctx.arc(x + size * 0.65, y - size * 0.15, size * 0.55, 0, Math.PI * 2);
+    ctx.arc(x - size * 0.65, y - size * 0.1, size * 0.55, 0, Math.PI * 2);
+    ctx.fill();
 
-    ctx.strokeStyle = GREEN;
+    ctx.fillStyle = LEAF_LIGHT;
     ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x, y - height - 5);
-    ctx.stroke();
-
-    ctx.strokeStyle = DGREEN;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + width, y - height + 2);
-    ctx.stroke();
+    ctx.arc(x - size * 0.25, y - size * 0.25, size * 0.2, 0, Math.PI * 2);
+    ctx.arc(x + size * 0.4, y - size * 0.3, size * 0.18, 0, Math.PI * 2);
+    ctx.fill();
 }
 
-function cuteSnake() {
-    const x = WIDTH / 2;
-    const y = HEIGHT / 2 - 65;
-
-    ctx.fillStyle = "#379155";
-    ctx.beginPath();
-    ctx.arc(x, y + 7, 38, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = GREEN;
-    ctx.beginPath();
-    ctx.arc(x, y, 35, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = BLUE;
-    ctx.beginPath();
-    ctx.arc(x - 50, y + 20, 28, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = PURPLE;
-    ctx.beginPath();
-    ctx.arc(x - 92, y + 32, 24, 0, Math.PI * 2);
-    ctx.fill();
-
-    [-11, 11].forEach(ex => {
-        ctx.fillStyle = WHITE;
-        ctx.beginPath();
-        ctx.arc(x + ex, y - 12, 9, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = BLACK;
-        ctx.beginPath();
-        ctx.arc(x + ex, y - 12, 4, 0, Math.PI * 2);
-        ctx.fill();
-    });
-
-    ctx.fillStyle = PINK;
-    ctx.beginPath();
-    ctx.arc(x - 21, y + 8, 5, 0, Math.PI * 2);
-    ctx.arc(x + 21, y + 8, 5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = BLACK;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(x, y + 1, 13, 0, Math.PI);
-    ctx.stroke();
-}
-
-function loginBackground() {
-    const grassStart = HEIGHT * 0.55;
+function drawGameBackground() {
+    const fieldTop = getFieldTop();
 
     ctx.fillStyle = SKY;
-    ctx.fillRect(0, 0, WIDTH, grassStart);
+    ctx.fillRect(0, 0, W, fieldTop);
 
     ctx.fillStyle = LGREEN;
-    ctx.fillRect(0, grassStart, WIDTH, HEIGHT - grassStart);
+    ctx.fillRect(0, fieldTop, W, H - fieldTop);
 
-    cloudOld(55, 90, 28);
-    cloudOld(WIDTH - 235, 105, 25);
-    cloudOld(WIDTH / 2 + 205, 58, 17);
-    cloudOld(WIDTH / 2 - 300, 165, 15);
+    drawSun();
 
-    heart(52, 55, 22);
-    heart(WIDTH - 52, 62, 22);
-    heart(170, 155, 8, LIGHT);
-    heart(WIDTH - 170, 165, 8, LIGHT);
+    drawCloud(W * 0.08, 95, 0.7);
+    drawCloud(W * 0.43, 120, 0.55);
 
-    const leftGrass = [20,55,90,125,160,195,230,265,300,335];
+    if (W > 500) {
+        drawCloud(W * 0.68, 75, 0.45);
+    }
 
-    leftGrass.forEach((x, i) => {
-        grassPatch(
-            x,
-            HEIGHT - 95 - (i % 4) * 22,
-            0.85
-        );
-    });
+    drawRainbow();
 
-    leftGrass.forEach((x, i) => {
-        grassPatch(
-            WIDTH - x,
-            HEIGHT - 95 - (i % 4) * 22,
-            0.85
-        );
-    });
-
-    const flowers = [
-        [45, HEIGHT - 125, 8, PINK],
-        [92, HEIGHT - 78, 7, PURPLE],
-        [140, HEIGHT - 118, 8, ORANGE],
-        [188, HEIGHT - 68, 7, PINK],
-        [235, HEIGHT - 110, 8, PURPLE],
-        [282, HEIGHT - 72, 7, ORANGE],
-        [325, HEIGHT - 120, 7, PINK]
-    ];
-
-    flowers.forEach(f => flower(...f));
-
-    flowers.forEach(([x, y, r, c]) => {
-        flower(
-            WIDTH - x,
-            y,
-            r,
-            c
-        );
-    });
-
-    butterfly(100, HEIGHT - 170, 0.85);
-    butterfly(230, HEIGHT - 195, 0.65);
-    butterfly(WIDTH - 100, HEIGHT - 170, 0.85);
-    butterfly(WIDTH - 230, HEIGHT - 195, 0.65);
-}
-
-function gameBackground() {
-    ctx.fillStyle = SKY;
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-    sun(WIDTH - 120, 105, 55);
-
-    cloudGame(30, 105, 1.15);
-    cloudGame(WIDTH / 2 - 120, 65, 0.65);
-    cloudGame(WIDTH - 430, 120, 0.70);
-
-    rainbow(WIDTH / 2, 395, 225);
-
-    mountain(
-        WIDTH / 2 - 250,
-        430,
-        530,
-        270,
-        "#4baacD"
+    drawMountain(
+        W * 0.02,
+        fieldTop - 150,
+        W * 0.35,
+        150,
+        "#91c8c9"
     );
 
-    mountain(
-        WIDTH / 2 + 250,
-        430,
-        530,
-        270,
-        "#419bc3"
+    drawMountain(
+        W * 0.38,
+        fieldTop - 180,
+        W * 0.38,
+        180,
+        "#7fb8c0"
     );
 
-    hill(
-        -180,
-        370,
-        WIDTH / 2 + 210,
-        190,
-        "#78c36e"
+    drawMountain(
+        W * 0.70,
+        fieldTop - 135,
+        W * 0.35,
+        135,
+        "#8dc5c6"
     );
 
-    hill(
-        WIDTH / 2 - 30,
-        370,
-        WIDTH / 2 + 210,
-        190,
-        "#69b969"
-    );
-
-    const fieldTop = Math.min(
-        HEIGHT - 150,
-        Math.max(495, HEIGHT / 2)
-    );
-
-    ctx.fillStyle = GRASS;
-    ctx.fillRect(
-        0,
+    drawHill(
+        W * 0.18,
         fieldTop,
-        WIDTH,
-        HEIGHT - fieldTop
+        W * 0.35,
+        65,
+        GRASS
     );
 
-    const tile = 80;
+    drawHill(
+        W * 0.75,
+        fieldTop,
+        W * 0.4,
+        75,
+        GRASS
+    );
 
-    for (let row = 0, y = fieldTop; y < HEIGHT; row++, y += tile) {
-        for (let col = 0, x = 0; x < WIDTH; col++, x += tile) {
-            if ((row + col) % 2 === 0) {
-                ctx.fillStyle = GRASS_LIGHT;
-                ctx.fillRect(x, y, tile, tile);
+    ctx.fillStyle = GRASS_LIGHT;
+
+    const tileSize = 48;
+
+    for (let y = fieldTop; y < H; y += tileSize) {
+        for (let x = 0; x < W; x += tileSize) {
+            if ((Math.floor(x / tileSize) + Math.floor(y / tileSize)) % 2 === 0) {
+                ctx.fillRect(x, y, tileSize, tileSize);
             }
         }
     }
 
-    bush(-80, HEIGHT - 145, 370, 145, "#2d9150");
-    bush(170, HEIGHT - 120, 300, 120, "#4baa5a");
-    bush(WIDTH - 470, HEIGHT - 120, 300, 120, "#4baa5a");
-    bush(WIDTH - 290, HEIGHT - 145, 370, 145, "#2d9150");
+    drawBush(45, fieldTop + 30, 35);
 
-    flower(85, HEIGHT - 90, 24, PINK);
-    flower(220, HEIGHT - 62, 18, PURPLE);
-    flower(WIDTH - 85, HEIGHT - 90, 24, PINK);
-    flower(WIDTH - 220, HEIGHT - 62, 18, PURPLE);
-}
-
-function getFoodArea() {
-    let top = Math.min(
-        HEIGHT - 220,
-        Math.max(525, HEIGHT / 2 + 20)
-    );
-
-    let bottom = HEIGHT - 170;
-
-    if (bottom <= top) {
-        top = Math.max(100, HEIGHT / 2);
-        bottom = Math.max(top + GRID, HEIGHT - 100);
+    if (W > 500) {
+        drawBush(W - 50, fieldTop + 35, 38);
     }
 
-    return { top, bottom };
-}
-
-function newFood() {
-    const area = getFoodArea();
-
-    const minY = Math.max(
-        1,
-        Math.floor(area.top / GRID)
+    drawFlower(
+        Math.min(W * 0.16, 120),
+        fieldTop + 55,
+        8
     );
 
-    const maxY = Math.max(
-        minY + 1,
-        Math.floor(area.bottom / GRID)
-    );
-
-    const maxX = Math.max(
-        4,
-        Math.floor(WIDTH / GRID) - 2
-    );
-
-    const x =
-        Math.floor(
-            Math.random() * (maxX - 1)
-        ) * GRID + GRID;
-
-    const y =
-        Math.floor(
-            Math.random() * (maxY - minY)
-        ) * GRID + minY * GRID;
-
-    return {
-        x,
-        y,
-        type: Math.floor(Math.random() * 5)
-    };
-}
-
-function samePosition(a, b) {
-    return a.x === b.x && a.y === b.y;
-}
-
-function validFood(food) {
-    for (const part of snake) {
-        if (samePosition(food, part)) {
-            return false;
-        }
+    if (W > 400) {
+        drawFlower(
+            W * 0.48,
+            fieldTop + 50,
+            7
+        );
     }
 
-    for (const oldFood of foods) {
-        if (samePosition(food, oldFood)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-function addFood() {
-    let attempts = 0;
-
-    while (foods.length < 5 && attempts < 1000) {
-        const food = newFood();
-
-        if (validFood(food)) {
-            foods.push(food);
-        }
-
-        attempts++;
+    if (W > 600) {
+        drawFlower(
+            W * 0.82,
+            fieldTop + 70,
+            8
+        );
     }
 }
 
-function createFoods() {
-    foods = [];
-    addFood();
+function getFieldTop() {
+    return Math.min(
+        H - 165,
+        Math.max(230, H * 0.55)
+    );
 }
 
-function resetGame() {
-    let y = Math.floor(
-        (HEIGHT / 2 + 70) / GRID
-    ) * GRID;
+function drawHeader() {
+    const small = Math.min(1, W / 700);
 
-    const startX =
-        Math.floor(
-            WIDTH / 2 / GRID
-        ) * GRID;
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    roundRect(15, 15, 115 * small + 30, 48, 15);
+    ctx.fill();
 
-    snake = [
-        { x: startX, y },
-        { x: startX - GRID, y },
-        { x: startX - GRID * 2, y }
-    ];
+    text(
+        "MENU",
+        30 + 57 * small,
+        39,
+        Math.max(14, 18 * small),
+        DPINK,
+        "center",
+        true
+    );
 
-    direction = {
-        x: GRID,
-        y: 0
-    };
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    roundRect(
+        W - 185,
+        15,
+        170,
+        48,
+        15
+    );
+    ctx.fill();
 
-    score = 0;
-    color = 0;
-    speed = 5;
-    moveTimer = 0;
-    gameOver = false;
+    text(
+        nama,
+        W - 100,
+        39,
+        16,
+        BLACK,
+        "center",
+        true
+    );
 
-    createFoods();
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    roundRect(
+        W / 2 - 80,
+        15,
+        75,
+        48,
+        15
+    );
+    ctx.fill();
+
+    text(
+        `⚡ ${speed.toFixed(1)}`,
+        W / 2 - 42,
+        39,
+        15,
+        DPINK,
+        "center",
+        true
+    );
+
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    roundRect(
+        W / 2 + 5,
+        15,
+        75,
+        48,
+        15
+    );
+    ctx.fill();
+
+    text(
+        `★ ${score}`,
+        W / 2 + 42,
+        39,
+        15,
+        DGREEN,
+        "center",
+        true
+    );
 }
 
 function drawFood(food) {
     const x = food.x + GRID / 2;
     const y = food.y + GRID / 2;
+    const s = GRID / 24;
 
-    if (food.type === 0) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    if (food.type === "apple") {
         ctx.fillStyle = RED;
         ctx.beginPath();
-        ctx.arc(x, y + 2, 9, 0, Math.PI * 2);
+        ctx.arc(-5 * s, 3 * s, 9 * s, 0, Math.PI * 2);
+        ctx.arc(5 * s, 3 * s, 9 * s, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = "#ff7882";
-        ctx.beginPath();
-        ctx.arc(x - 3, y - 2, 3, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillStyle = BROWN;
+        ctx.fillRect(-1 * s, -10 * s, 3 * s, 6 * s);
 
-        ctx.strokeStyle = BROWN;
-        ctx.lineWidth = 3;
+        ctx.fillStyle = LEAF;
         ctx.beginPath();
-        ctx.moveTo(x, y - 8);
-        ctx.lineTo(x + 2, y - 14);
-        ctx.stroke();
-
-        ctx.fillStyle = GREEN;
-        ctx.beginPath();
-        ctx.ellipse(x + 5, y - 12, 5, 2.5, 0, 0, Math.PI * 2);
+        ctx.ellipse(
+            5 * s,
+            -9 * s,
+            6 * s,
+            3 * s,
+            -0.4,
+            0,
+            Math.PI * 2
+        );
         ctx.fill();
     }
 
-    else if (food.type === 1) {
-        const positions = [
-            [-6, 3],
-            [0, 5],
-            [6, 3],
-            [-3, -3],
-            [3, -3],
-            [0, -8]
-        ];
-
+    if (food.type === "grapes") {
         ctx.fillStyle = PURPLE;
 
-        positions.forEach(([dx, dy]) => {
-            ctx.beginPath();
-            ctx.arc(x + dx, y + dy, 4, 0, Math.PI * 2);
-            ctx.fill();
-        });
+        const points = [
+            [0, -7],
+            [-6, -2],
+            [6, -2],
+            [-7, 5],
+            [0, 5],
+            [7, 5],
+            [-4, 11],
+            [4, 11]
+        ];
 
-        ctx.fillStyle = GREEN;
+        for (const p of points) {
+            ctx.beginPath();
+            ctx.arc(
+                p[0] * s,
+                p[1] * s,
+                5 * s,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+
+        ctx.fillStyle = LEAF;
         ctx.beginPath();
-        ctx.ellipse(x + 7, y - 11, 4.5, 2.5, 0, 0, Math.PI * 2);
+        ctx.ellipse(
+            -3 * s,
+            -10 * s,
+            7 * s,
+            3 * s,
+            -0.4,
+            0,
+            Math.PI * 2
+        );
         ctx.fill();
     }
 
-    else if (food.type === 2) {
+    if (food.type === "banana") {
         ctx.strokeStyle = YELLOW;
-        ctx.lineWidth = 7;
+        ctx.lineWidth = 8 * s;
+        ctx.lineCap = "round";
 
         ctx.beginPath();
         ctx.arc(
-            x,
-            y,
-            11,
-            0.3,
-            3.0
+            0,
+            0,
+            11 * s,
+            0.15,
+            Math.PI * 0.95
         );
         ctx.stroke();
 
         ctx.strokeStyle = ORANGE;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2 * s;
+
+        ctx.beginPath();
+        ctx.arc(
+            0,
+            0,
+            11 * s,
+            0.15,
+            Math.PI * 0.95
+        );
+        ctx.stroke();
+    }
+
+    if (food.type === "strawberry") {
+        ctx.fillStyle = RED;
+
+        ctx.beginPath();
+        ctx.moveTo(0, 11 * s);
+        ctx.bezierCurveTo(
+            -15 * s,
+            2 * s,
+            -10 * s,
+            -9 * s,
+            0,
+            -4 * s
+        );
+        ctx.bezierCurveTo(
+            10 * s,
+            -9 * s,
+            15 * s,
+            2 * s,
+            0,
+            11 * s
+        );
+        ctx.fill();
+
+        ctx.fillStyle = GREEN;
+        ctx.beginPath();
+        ctx.moveTo(0, -4 * s);
+        ctx.lineTo(-8 * s, -10 * s);
+        ctx.lineTo(-3 * s, -10 * s);
+        ctx.lineTo(0, -15 * s);
+        ctx.lineTo(3 * s, -10 * s);
+        ctx.lineTo(8 * s, -10 * s);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = YELLOW;
+
+        for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            ctx.arc(
+                (i - 2) * 4 * s,
+                1 * s + Math.abs(i - 2) * 2 * s,
+                1.2 * s,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+    }
+
+    if (food.type === "yellow") {
+        ctx.fillStyle = ORANGE;
+        ctx.beginPath();
+        ctx.arc(0, 0, 10 * s, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = YELLOW;
+        ctx.beginPath();
+        ctx.arc(-3 * s, -3 * s, 6 * s, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = LEAF;
+        ctx.beginPath();
+        ctx.ellipse(
+            7 * s,
+            -9 * s,
+            6 * s,
+            3 * s,
+            -0.5,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+function drawSnake() {
+    const colors = snakeColors[snakeColorIndex];
+
+    for (let i = snake.length - 1; i >= 0; i--) {
+        const part = snake[i];
+
+        const x = part.x + GRID / 2;
+        const y = part.y + GRID / 2;
+
+        ctx.fillStyle = i === 0 ? colors.body : colors.light;
 
         ctx.beginPath();
         ctx.arc(
             x,
             y,
-            8,
-            0.4,
-            2.8
-        );
-        ctx.stroke();
-    }
-
-    else if (food.type === 3) {
-        ctx.fillStyle = RED;
-
-        ctx.beginPath();
-        ctx.moveTo(x, y + 10);
-        ctx.lineTo(x - 9, y - 2);
-        ctx.lineTo(x - 6, y - 8);
-        ctx.lineTo(x + 6, y - 8);
-        ctx.lineTo(x + 9, y - 2);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = GREEN;
-
-        ctx.beginPath();
-        ctx.moveTo(x - 8, y - 8);
-        ctx.lineTo(x, y - 14);
-        ctx.lineTo(x + 8, y - 8);
-        ctx.lineTo(x + 3, y - 5);
-        ctx.lineTo(x - 3, y - 5);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = YELLOW;
-
-        [
-            [-4, -2],
-            [2, -1],
-            [0, 4],
-            [5, 3]
-        ].forEach(([dx, dy]) => {
-            ctx.beginPath();
-            ctx.arc(x + dx, y + dy, 1, 0, Math.PI * 2);
-            ctx.fill();
-        });
-    }
-
-    else {
-        ctx.fillStyle = YELLOW;
-
-        ctx.beginPath();
-        ctx.ellipse(
-            x,
-            y,
-            8,
-            9,
-            0,
+            GRID / 2 + 2,
             0,
             Math.PI * 2
         );
         ctx.fill();
 
-        ctx.strokeStyle = ORANGE;
-        ctx.lineWidth = 1;
-
-        ctx.beginPath();
-        ctx.moveTo(x - 7, y - 3);
-        ctx.lineTo(x + 7, y - 3);
-        ctx.moveTo(x - 7, y + 3);
-        ctx.lineTo(x + 7, y + 3);
+        ctx.strokeStyle = colors.dark;
+        ctx.lineWidth = 2;
         ctx.stroke();
 
-        ctx.fillStyle = GREEN;
+        if (i !== 0) {
+            ctx.fillStyle = colors.body;
+            ctx.beginPath();
+            ctx.arc(
+                x - 2,
+                y - 2,
+                5,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+    }
 
-        ctx.beginPath();
-        ctx.moveTo(x - 6, y - 7);
-        ctx.lineTo(x - 4, y - 15);
-        ctx.lineTo(x, y - 8);
-        ctx.lineTo(x + 4, y - 15);
-        ctx.lineTo(x + 6, y - 7);
-        ctx.closePath();
-        ctx.fill();
+    if (snake.length > 0) {
+        drawSnakeFace(snake[0]);
     }
 }
 
+function drawSnakeFace(head) {
+    const x = head.x + GRID / 2;
+    const y = head.y + GRID / 2;
+
+    let eye1 = [x - 5, y - 6];
+    let eye2 = [x + 5, y - 6];
+
+    if (direction === "left") {
+        eye1 = [x - 6, y - 5];
+        eye2 = [x - 6, y + 5];
+    }
+
+    if (direction === "right") {
+        eye1 = [x + 6, y - 5];
+        eye2 = [x + 6, y + 5];
+    }
+
+    if (direction === "down") {
+        eye1 = [x - 5, y + 6];
+        eye2 = [x + 5, y + 6];
+    }
+
+    ctx.fillStyle = WHITE;
+
+    ctx.beginPath();
+    ctx.arc(eye1[0], eye1[1], 4, 0, Math.PI * 2);
+    ctx.arc(eye2[0], eye2[1], 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = BLACK;
+
+    ctx.beginPath();
+    ctx.arc(eye1[0], eye1[1], 2, 0, Math.PI * 2);
+    ctx.arc(eye2[0], eye2[1], 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = DPINK;
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+
+    if (direction === "right") {
+        ctx.moveTo(x + 10, y);
+        ctx.lineTo(x + 17, y);
+    } else if (direction === "left") {
+        ctx.moveTo(x - 10, y);
+        ctx.lineTo(x - 17, y);
+    } else if (direction === "up") {
+        ctx.moveTo(x, y - 10);
+        ctx.lineTo(x, y - 17);
+    } else {
+        ctx.moveTo(x, y + 10);
+        ctx.lineTo(x, y + 17);
+    }
+
+    ctx.stroke();
+}
+
+function getControlSize() {
+    if (W < 500) {
+        return Math.max(56, Math.min(72, W * 0.17));
+    }
+
+    return Math.max(65, Math.min(82, W * 0.065));
+}
+
 function getControls() {
-    const size = Math.max(
-        58,
-        Math.min(
-            76,
-            WIDTH / 6
-        )
-    );
+    const size = getControlSize();
 
-    const gap = Math.max(
-        6,
-        Math.min(
-            10,
-            WIDTH / 70
-        )
-    );
+    const gap = Math.max(7, size * 0.13);
 
-    const x = WIDTH - size * 2.5;
-    const y = HEIGHT - size * 1.25;
+    const centerX = W - size * 1.45;
+    const centerY = H - size * 1.45;
 
     return {
         up: {
-            x: x - size / 2,
-            y: y - size * 2 - gap,
+            x: centerX - size / 2,
+            y: centerY - size - gap,
             w: size,
             h: size
         },
-
         left: {
-            x: x - size - gap - size / 2,
-            y: y - size,
+            x: centerX - size - gap,
+            y: centerY,
             w: size,
             h: size
         },
-
         down: {
-            x: x - size / 2,
-            y: y - size,
+            x: centerX - size / 2,
+            y: centerY,
             w: size,
             h: size
         },
-
         right: {
-            x: x + gap + size / 2,
-            y: y - size,
+            x: centerX + gap,
+            y: centerY,
             w: size,
             h: size
         }
     };
 }
 
-function drawControlsCanvas() {
-    if (window.innerWidth > 900 && "ontouchstart" in window === false) {
-        return;
+function drawControlBox(box, symbol) {
+    ctx.fillStyle = "rgba(255,255,255,0.88)";
+    roundRect(box.x, box.y, box.w, box.h, 15);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(65,60,70,0.18)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    text(
+        symbol,
+        box.x + box.w / 2,
+        box.y + box.h / 2,
+        Math.max(22, box.w * 0.4),
+        DPINK,
+        "center",
+        true
+    );
+}
+
+function drawControls() {
+    const c = getControls();
+
+    drawControlBox(c.up, "▲");
+    drawControlBox(c.left, "◀");
+    drawControlBox(c.down, "▼");
+    drawControlBox(c.right, "▶");
+}
+
+function drawGame() {
+    drawGameBackground();
+    drawHeader();
+
+    for (const food of foods) {
+        drawFood(food);
     }
 
-    const controls = getControls();
+    drawSnake();
+    drawControls();
 
-    const buttons = [
-        [controls.up, "▲"],
-        [controls.left, "◀"],
-        [controls.down, "▼"],
-        [controls.right, "▶"]
+    if (gameOver) {
+        drawGameOver();
+    }
+}
+
+function drawLogin() {
+    ctx.fillStyle = SKY;
+    ctx.fillRect(0, 0, W, H * 0.58);
+
+    ctx.fillStyle = LIGHT;
+    ctx.fillRect(0, H * 0.58, W, H * 0.42);
+
+    drawCloud(W * 0.10, H * 0.13, 0.7);
+    drawCloud(W * 0.75, H * 0.18, 0.55);
+
+    drawSun();
+
+    drawHill(
+        W * 0.18,
+        H * 0.63,
+        W * 0.45,
+        H * 0.12,
+        GRASS
+    );
+
+    drawHill(
+        W * 0.82,
+        H * 0.65,
+        W * 0.45,
+        H * 0.12,
+        GRASS_LIGHT
+    );
+
+    text(
+        "SNAKE",
+        W / 2,
+        H * 0.16,
+        Math.max(36, Math.min(72, W * 0.14)),
+        DPINK,
+        "center",
+        true
+    );
+
+    text(
+        "Snake of Jura",
+        W / 2,
+        H * 0.23,
+        Math.max(18, Math.min(30, W * 0.06)),
+        BLACK,
+        "center",
+        true
+    );
+
+    drawCuteSnake(
+        W / 2,
+        H * 0.38
+    );
+
+    text(
+        "Ayo bantu ular mencari makanan!",
+        W / 2,
+        H * 0.49,
+        Math.max(14, Math.min(21, W * 0.045)),
+        BLACK,
+        "center",
+        false
+    );
+
+    const bw = Math.min(310, W - 50);
+    const bh = 58;
+
+    button(
+        W / 2 - bw / 2,
+        H * 0.57,
+        bw,
+        bh,
+        "MULAI GAME",
+        PINK
+    );
+
+    button(
+        W / 2 - bw / 2,
+        H * 0.57 + 78,
+        bw,
+        bh,
+        "KELUAR",
+        DPINK
+    );
+
+    drawFlower(
+        W * 0.15,
+        H * 0.77,
+        7
+    );
+
+    drawFlower(
+        W * 0.85,
+        H * 0.79,
+        7
+    );
+}
+
+function drawCuteSnake(cx, cy) {
+    const s = Math.min(1.2, Math.max(0.75, W / 500));
+
+    ctx.fillStyle = GREEN;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 42 * s, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = DGREEN;
+    ctx.lineWidth = 4 * s;
+    ctx.stroke();
+
+    ctx.fillStyle = WHITE;
+
+    ctx.beginPath();
+    ctx.arc(cx - 15 * s, cy - 8 * s, 9 * s, 0, Math.PI * 2);
+    ctx.arc(cx + 15 * s, cy - 8 * s, 9 * s, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = BLACK;
+
+    ctx.beginPath();
+    ctx.arc(cx - 15 * s, cy - 8 * s, 4 * s, 0, Math.PI * 2);
+    ctx.arc(cx + 15 * s, cy - 8 * s, 4 * s, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = DPINK;
+    ctx.lineWidth = 3 * s;
+
+    ctx.beginPath();
+    ctx.arc(
+        cx,
+        cy + 8 * s,
+        13 * s,
+        0.15,
+        Math.PI - 0.15
+    );
+    ctx.stroke();
+
+    ctx.fillStyle = PINK;
+    ctx.beginPath();
+    ctx.arc(cx - 32 * s, cy + 18 * s, 7 * s, 0, Math.PI * 2);
+    ctx.arc(cx + 32 * s, cy + 18 * s, 7 * s, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function drawGameOver() {
+    ctx.fillStyle = "rgba(40,35,45,0.55)";
+    ctx.fillRect(0, 0, W, H);
+
+    const panelW = Math.min(420, W - 30);
+    const panelH = Math.min(410, H - 30);
+
+    const px = W / 2 - panelW / 2;
+    const py = H / 2 - panelH / 2;
+
+    ctx.fillStyle = LIGHT;
+    roundRect(px, py, panelW, panelH, 25);
+    ctx.fill();
+
+    text(
+        "GAME OVER",
+        W / 2,
+        py + 55,
+        Math.max(27, Math.min(42, panelW * 0.10)),
+        DPINK,
+        "center",
+        true
+    );
+
+    text(
+        `Skor: ${score}`,
+        W / 2,
+        py + 105,
+        20,
+        BLACK,
+        "center",
+        true
+    );
+
+    text(
+        `Speed: ${speed.toFixed(1)}`,
+        W / 2,
+        py + 138,
+        17,
+        DGREEN,
+        "center",
+        true
+    );
+
+    const bw = Math.min(300, panelW - 50);
+    const bh = 55;
+
+    button(
+        W / 2 - bw / 2,
+        py + 175,
+        bw,
+        bh,
+        "MAIN LAGI",
+        GREEN
+    );
+
+    button(
+        W / 2 - bw / 2,
+        py + 245,
+        bw,
+        bh,
+        "KEMBALI KE MENU",
+        DPINK
+    );
+}
+
+function resetGame() {
+    score = 0;
+    speed = 5;
+    gameOver = false;
+    direction = "right";
+    nextDirection = "right";
+    snakeColorIndex = 0;
+    moveTimer = 0;
+
+    const startX = Math.floor(
+        (W / 2 - GRID / 2) / GRID
+    ) * GRID;
+
+    const startY = Math.floor(
+        (H / 2 + 50) / GRID
+    ) * GRID;
+
+    snake = [
+        { x: startX, y: startY },
+        { x: startX - GRID, y: startY },
+        { x: startX - GRID * 2, y: startY }
     ];
 
-    buttons.forEach(([rect, symbol]) => {
-        roundedRect(
-            rect.x,
-            rect.y + 5,
-            rect.w,
-            rect.h,
-            18,
-            DPINK
-        );
+    foods = [];
+    ensureFoods();
+}
 
-        roundedRect(
-            rect.x,
-            rect.y,
-            rect.w,
-            rect.h,
-            18,
-            PINK,
-            WHITE,
-            3
-        );
+function randomFoodPosition() {
+    const top = Math.floor(
+        (getFieldTop() + 30) / GRID
+    ) * GRID;
 
-        ctx.fillStyle = WHITE;
-        ctx.font = "bold 25px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(
-            symbol,
-            rect.x + rect.w / 2,
-            rect.y + rect.h / 2
-        );
-    });
+    const bottom = Math.floor(
+        (H - 190) / GRID
+    ) * GRID;
+
+    const maxX = Math.floor(
+        (W - GRID) / GRID
+    ) * GRID;
+
+    const candidates = [];
+
+    if (bottom <= top) {
+        return null;
+    }
+
+    for (let y = top; y <= bottom; y += GRID) {
+        for (let x = 0; x <= maxX; x += GRID) {
+            const blockedBySnake = snake.some(
+                part => part.x === x && part.y === y
+            );
+
+            const blockedByFood = foods.some(
+                food => food.x === x && food.y === y
+            );
+
+            if (!blockedBySnake && !blockedByFood) {
+                candidates.push({ x, y });
+            }
+        }
+    }
+
+    if (candidates.length === 0) {
+        return null;
+    }
+
+    return candidates[
+        Math.floor(Math.random() * candidates.length)
+    ];
+}
+
+function ensureFoods() {
+    while (foods.length < 5) {
+        const position = randomFoodPosition();
+
+        if (!position) {
+            break;
+        }
+
+        foods.push({
+            x: position.x,
+            y: position.y,
+            type: foodTypes[
+                Math.floor(Math.random() * foodTypes.length)
+            ]
+        });
+    }
 }
 
 function changeDirection(newDirection) {
-    if (!newDirection) {
+    if (gameOver) {
         return;
+    }
+
+    if (newDirection === "up" && direction !== "down") {
+        nextDirection = "up";
+    }
+
+    if (newDirection === "down" && direction !== "up") {
+        nextDirection = "down";
+    }
+
+    if (newDirection === "left" && direction !== "right") {
+        nextDirection = "left";
+    }
+
+    if (newDirection === "right" && direction !== "left") {
+        nextDirection = "right";
+    }
+}
+
+function moveSnake() {
+    direction = nextDirection;
+
+    const head = snake[0];
+
+    const newHead = {
+        x: head.x,
+        y: head.y
+    };
+
+    if (direction === "up") {
+        newHead.y -= GRID;
+    }
+
+    if (direction === "down") {
+        newHead.y += GRID;
+    }
+
+    if (direction === "left") {
+        newHead.x -= GRID;
+    }
+
+    if (direction === "right") {
+        newHead.x += GRID;
     }
 
     if (
-        newDirection.x === -direction.x &&
-        newDirection.y === -direction.y
+        newHead.x < 0 ||
+        newHead.y < 0 ||
+        newHead.x + GRID > W ||
+        newHead.y + GRID > H
     ) {
+        gameOver = true;
         return;
     }
 
-    direction = newDirection;
+    const hitSelf = snake.some(
+        part =>
+            part.x === newHead.x &&
+            part.y === newHead.y
+    );
+
+    if (hitSelf) {
+        gameOver = true;
+        return;
+    }
+
+    snake.unshift(newHead);
+
+    let ate = false;
+
+    for (let i = foods.length - 1; i >= 0; i--) {
+        if (
+            foods[i].x === newHead.x &&
+            foods[i].y === newHead.y
+        ) {
+            foods.splice(i, 1);
+
+            score++;
+
+            speed = Math.min(
+                10,
+                5 + score * 0.3
+            );
+
+            snakeColorIndex =
+                (snakeColorIndex + 1) %
+                snakeColors.length;
+
+            ate = true;
+            break;
+        }
+    }
+
+    if (!ate) {
+        snake.pop();
+    }
+
+    ensureFoods();
 }
 
-function handleControl(x, y) {
-    const controls = getControls();
+function getLoginButtons() {
+    const bw = Math.min(310, W - 50);
+    const bh = 58;
 
-    if (pointInRect(x, y, controls.up)) {
-        changeDirection({ x: 0, y: -GRID });
-        return true;
-    }
-
-    if (pointInRect(x, y, controls.down)) {
-        changeDirection({ x: 0, y: GRID });
-        return true;
-    }
-
-    if (pointInRect(x, y, controls.left)) {
-        changeDirection({ x: -GRID, y: 0 });
-        return true;
-    }
-
-    if (pointInRect(x, y, controls.right)) {
-        changeDirection({ x: GRID, y: 0 });
-        return true;
-    }
-
-    return false;
+    return {
+        start: {
+            x: W / 2 - bw / 2,
+            y: H * 0.57,
+            w: bw,
+            h: bh
+        },
+        exit: {
+            x: W / 2 - bw / 2,
+            y: H * 0.57 + 78,
+            w: bw,
+            h: bh
+        }
+    };
 }
 
-function pointInRect(x, y, rect) {
+function getGameOverButtons() {
+    const panelW = Math.min(420, W - 30);
+    const panelH = Math.min(410, H - 30);
+
+    const py = H / 2 - panelH / 2;
+    const bw = Math.min(300, panelW - 50);
+    const bh = 55;
+
+    return {
+        again: {
+            x: W / 2 - bw / 2,
+            y: py + 175,
+            w: bw,
+            h: bh
+        },
+        menu: {
+            x: W / 2 - bw / 2,
+            y: py + 245,
+            w: bw,
+            h: bh
+        }
+    };
+}
+
+function pointInside(x, y, rect) {
     return (
         x >= rect.x &&
         x <= rect.x + rect.w &&
@@ -1058,657 +1326,169 @@ function pointInRect(x, y, rect) {
     );
 }
 
-function drawSnake() {
-    const colors = snakeColors[color];
+function handlePointer(x, y) {
+    if (halaman === "login") {
+        const buttons = getLoginButtons();
 
-    snake.forEach((part, index) => {
-        let currentColor;
-
-        if (index === 0) {
-            currentColor = colors[0];
-        } else if (index % 2 === 0) {
-            currentColor = colors[1];
-        } else {
-            currentColor = colors[2];
+        if (pointInside(x, y, buttons.start)) {
+            halaman = "game";
+            resetGame();
+            return;
         }
 
-        ctx.fillStyle = currentColor;
+        if (pointInside(x, y, buttons.exit)) {
+            window.close();
 
-        ctx.beginPath();
-        ctx.arc(
-            part.x + GRID / 2,
-            part.y + GRID / 2,
-            GRID / 2 + 3,
-            0,
-            Math.PI * 2
-        );
-        ctx.fill();
+            setTimeout(() => {
+                if (!document.hidden) {
+                    text(
+                        "Silakan tutup halaman ini.",
+                        W / 2,
+                        H * 0.9,
+                        16,
+                        BLACK
+                    );
+                }
+            }, 100);
 
-        ctx.strokeStyle = WHITE;
-        ctx.lineWidth = 2;
-
-        ctx.beginPath();
-        ctx.arc(
-            part.x + GRID / 2,
-            part.y + GRID / 2,
-            GRID / 2 + 3,
-            0,
-            Math.PI * 2
-        );
-        ctx.stroke();
-    });
-
-    drawSnakeEyes();
-}
-
-function drawSnakeEyes() {
-    const head = snake[0];
-
-    let eyes;
-
-    if (direction.x > 0) {
-        eyes = [
-            [head.x + GRID - 6, head.y + 6],
-            [head.x + GRID - 6, head.y + GRID - 6]
-        ];
-    }
-
-    else if (direction.x < 0) {
-        eyes = [
-            [head.x + 6, head.y + 6],
-            [head.x + 6, head.y + GRID - 6]
-        ];
-    }
-
-    else if (direction.y < 0) {
-        eyes = [
-            [head.x + 6, head.y + 6],
-            [head.x + GRID - 6, head.y + 6]
-        ];
-    }
-
-    else {
-        eyes = [
-            [head.x + 6, head.y + GRID - 6],
-            [head.x + GRID - 6, head.y + GRID - 6]
-        ];
-    }
-
-    eyes.forEach(([x, y]) => {
-        ctx.fillStyle = WHITE;
-        ctx.beginPath();
-        ctx.arc(x, y, 5, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = BLACK;
-        ctx.beginPath();
-        ctx.arc(x, y, 2, 0, Math.PI * 2);
-        ctx.fill();
-    });
-}
-
-function moveSnake() {
-    const head = {
-        x: snake[0].x + direction.x,
-        y: snake[0].y + direction.y
-    };
-
-    let eatenIndex = -1;
-
-    foods.forEach((food, index) => {
-        if (
-            head.x < food.x + GRID &&
-            head.x + GRID > food.x &&
-            head.y < food.y + GRID &&
-            head.y + GRID > food.y
-        ) {
-            eatenIndex = index;
-        }
-    });
-
-    snake.unshift(head);
-
-    if (eatenIndex !== -1) {
-        foods.splice(eatenIndex, 1);
-
-        score++;
-
-        color =
-            (color + 1) %
-            snakeColors.length;
-
-        speed = Math.min(
-            5 + score * 0.3,
-            MAX_SPEED
-        );
-
-        addFood();
-    } else {
-        snake.pop();
-    }
-
-    if (
-        head.x < 0 ||
-        head.x + GRID > WIDTH ||
-        head.y < 0 ||
-        head.y + GRID > HEIGHT
-    ) {
-        gameOver = true;
-        return;
-    }
-
-    for (let i = 1; i < snake.length; i++) {
-        if (
-            head.x === snake[i].x &&
-            head.y === snake[i].y
-        ) {
-            gameOver = true;
             return;
         }
     }
 
-    if (foods.length < 5) {
-        addFood();
+    if (halaman === "game" && !gameOver) {
+        const controls = getControls();
+
+        if (pointInside(x, y, controls.up)) {
+            changeDirection("up");
+        } else if (pointInside(x, y, controls.down)) {
+            changeDirection("down");
+        } else if (pointInside(x, y, controls.left)) {
+            changeDirection("left");
+        } else if (pointInside(x, y, controls.right)) {
+            changeDirection("right");
+        } else if (
+            x <= 145 &&
+            y <= 75
+        ) {
+            halaman = "login";
+        }
+    }
+
+    if (halaman === "game" && gameOver) {
+        const buttons = getGameOverButtons();
+
+        if (pointInside(x, y, buttons.again)) {
+            resetGame();
+        } else if (pointInside(x, y, buttons.menu)) {
+            halaman = "login";
+            gameOver = false;
+        }
     }
 }
 
-function drawText(text, x, y, size, color, align = "center") {
-    ctx.fillStyle = color;
-    ctx.font = `bold ${size}px Arial`;
-    ctx.textAlign = align;
-    ctx.textBaseline = "middle";
-    ctx.fillText(text, x, y);
-}
+canvas.addEventListener(
+    "pointerdown",
+    event => {
+        event.preventDefault();
 
-function drawLogin() {
-    loginBackground();
+        const rect = canvas.getBoundingClientRect();
 
-    drawText(
-        "SNAKE",
-        WIDTH / 2,
-        65,
-        Math.max(
-            40,
-            Math.min(70, WIDTH / 17)
-        ),
-        DPINK
-    );
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
 
-    drawText(
-        "Snake of Jura",
-        WIDTH / 2,
-        130,
-        Math.max(
-            20,
-            Math.min(30, WIDTH / 45)
-        ),
-        BLACK
-    );
+        handlePointer(x, y);
+    },
+    { passive: false }
+);
 
-    cuteSnake();
+document.addEventListener(
+    "keydown",
+    event => {
+        const key = event.key.toLowerCase();
 
-    drawText(
-        "Ayo bantu ular mencari makanan!",
-        WIDTH / 2,
-        HEIGHT / 2 - 15,
-        Math.max(
-            15,
-            Math.min(23, WIDTH / 50)
-        ),
-        DGREEN
-    );
-
-    const buttonW = Math.min(
-        350,
-        WIDTH - 60
-    );
-
-    const buttonH = 65;
-
-    const play = {
-        x: WIDTH / 2 - buttonW / 2,
-        y: HEIGHT / 2 + 45,
-        w: buttonW,
-        h: buttonH
-    };
-
-    const keluar = {
-        x: WIDTH / 2 - buttonW / 2,
-        y: HEIGHT / 2 + 125,
-        w: buttonW,
-        h: buttonH
-    };
-
-    roundedRect(
-        play.x,
-        play.y + 6,
-        play.w,
-        play.h,
-        24,
-        DGREEN
-    );
-
-    roundedRect(
-        play.x,
-        play.y,
-        play.w,
-        play.h,
-        24,
-        GREEN,
-        WHITE,
-        3
-    );
-
-    drawText(
-        "MULAI GAME",
-        play.x + play.w / 2,
-        play.y + play.h / 2,
-        Math.max(
-            20,
-            Math.min(30, WIDTH / 43)
-        ),
-        WHITE
-    );
-
-    roundedRect(
-        keluar.x,
-        keluar.y + 6,
-        keluar.w,
-        keluar.h,
-        24,
-        "#b9416e"
-    );
-
-    roundedRect(
-        keluar.x,
-        keluar.y,
-        keluar.w,
-        keluar.h,
-        24,
-        DPINK,
-        WHITE,
-        3
-    );
-
-    drawText(
-        "KELUAR",
-        keluar.x + keluar.w / 2,
-        keluar.y + keluar.h / 2,
-        Math.max(
-            20,
-            Math.min(30, WIDTH / 43)
-        ),
-        WHITE
-    );
-}
-
-function drawGame() {
-    gameBackground();
-
-    const menu = {
-        x: 12,
-        y: 8,
-        w: Math.min(125, Math.max(105, WIDTH / 6)),
-        h: 42
-    };
-
-    roundedRect(
-        menu.x,
-        menu.y + 4,
-        menu.w,
-        menu.h,
-        16,
-        DPINK
-    );
-
-    roundedRect(
-        menu.x,
-        menu.y,
-        menu.w,
-        menu.h,
-        16,
-        PINK,
-        WHITE,
-        3
-    );
-
-    drawText(
-        "MENU",
-        menu.x + menu.w / 2,
-        menu.y + menu.h / 2,
-        Math.max(
-            17,
-            Math.min(25, WIDTH / 60)
-        ),
-        WHITE
-    );
-
-    drawText(
-        nama,
-        menu.x + menu.w + 20,
-        27,
-        Math.max(
-            17,
-            Math.min(25, WIDTH / 60)
-        ),
-        DPINK,
-        "left"
-    );
-
-    const speedBoxW = Math.min(
-        185,
-        Math.max(145, WIDTH / 7)
-    );
-
-    const speedBox = {
-        x: WIDTH - speedBoxW - 210,
-        y: 7,
-        w: speedBoxW,
-        h: 37
-    };
-
-    roundedRect(
-        speedBox.x,
-        speedBox.y,
-        speedBox.w,
-        speedBox.h,
-        18,
-        WHITE,
-        PINK,
-        2
-    );
-
-    drawText(
-        "SPEED " + speed.toFixed(1),
-        speedBox.x + speedBox.w / 2,
-        speedBox.y + speedBox.h / 2,
-        Math.max(
-            17,
-            Math.min(25, WIDTH / 60)
-        ),
-        DPINK
-    );
-
-    const scoreBoxW = Math.min(
-        195,
-        Math.max(145, WIDTH / 7)
-    );
-
-    const scoreBox = {
-        x: WIDTH - scoreBoxW - 15,
-        y: 7,
-        w: scoreBoxW,
-        h: 37
-    };
-
-    roundedRect(
-        scoreBox.x,
-        scoreBox.y,
-        scoreBox.w,
-        scoreBox.h,
-        18,
-        WHITE,
-        PINK,
-        2
-    );
-
-    drawText(
-        "SKOR " + score,
-        scoreBox.x + scoreBox.w / 2,
-        scoreBox.y + scoreBox.h / 2,
-        Math.max(
-            17,
-            Math.min(25, WIDTH / 60)
-        ),
-        DPINK
-    );
-
-    foods.forEach(food => drawFood(food));
-
-    drawSnake();
-
-    drawControlsCanvas();
-
-    if (gameOver) {
-        drawGameOver();
-    }
-}
-
-function drawGameOver() {
-    ctx.fillStyle = "rgba(65,60,70,0.57)";
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-    const panelW = Math.min(
-        WIDTH - 30,
-        WIDTH <= 700 ? 400 : 480
-    );
-
-    const panelH = Math.min(
-        HEIGHT - 30,
-        WIDTH <= 700 ? 370 : 380
-    );
-
-    const panel = {
-        x: WIDTH / 2 - panelW / 2,
-        y: HEIGHT / 2 - panelH / 2,
-        w: panelW,
-        h: panelH
-    };
-
-    roundedRect(
-        panel.x,
-        panel.y + 8,
-        panel.w,
-        panel.h,
-        34,
-        "#28232d"
-    );
-
-    roundedRect(
-        panel.x,
-        panel.y,
-        panel.w,
-        panel.h,
-        34,
-        LIGHT,
-        PINK,
-        5
-    );
-
-    heart(
-        panel.x + 48,
-        panel.y + 48,
-        13
-    );
-
-    heart(
-        panel.x + panel.w - 48,
-        panel.y + 48,
-        13
-    );
-
-    drawText(
-        "GAME OVER",
-        WIDTH / 2,
-        panel.y + 65,
-        Math.max(
-            38,
-            Math.min(65, WIDTH / 17)
-        ),
-        DPINK
-    );
-
-    const infoW = Math.min(
-        panel.w - 50,
-        330
-    );
-
-    roundedRect(
-        WIDTH / 2 - infoW / 2,
-        panel.y + 105,
-        infoW,
-        48,
-        18,
-        WHITE,
-        PINK,
-        2
-    );
-
-    drawText(
-        "SKOR  " + score,
-        WIDTH / 2,
-        panel.y + 129,
-        Math.max(
-            20,
-            Math.min(30, WIDTH / 45)
-        ),
-        DPINK
-    );
-
-    roundedRect(
-        WIDTH / 2 - infoW / 2,
-        panel.y + 162,
-        infoW,
-        45,
-        18,
-        WHITE,
-        GREEN,
-        2
-    );
-
-    drawText(
-        "SPEED  " + speed.toFixed(1),
-        WIDTH / 2,
-        panel.y + 184,
-        Math.max(
-            17,
-            Math.min(25, WIDTH / 60)
-        ),
-        DGREEN
-    );
-
-    const buttonW = Math.min(
-        290,
-        WIDTH - 70
-    );
-
-    const ulang = {
-        x: WIDTH / 2 - buttonW / 2,
-        y: panel.y + panel.h - 122,
-        w: buttonW,
-        h: 50
-    };
-
-    const keluar = {
-        x: WIDTH / 2 - buttonW / 2,
-        y: panel.y + panel.h - 62,
-        w: buttonW,
-        h: 50
-    };
-
-    roundedRect(
-        ulang.x,
-        ulang.y + 5,
-        ulang.w,
-        ulang.h,
-        20,
-        DGREEN
-    );
-
-    roundedRect(
-        ulang.x,
-        ulang.y,
-        ulang.w,
-        ulang.h,
-        20,
-        GREEN,
-        WHITE,
-        3
-    );
-
-    drawText(
-        "MAIN LAGI",
-        ulang.x + ulang.w / 2,
-        ulang.y + ulang.h / 2,
-        Math.max(
-            17,
-            Math.min(25, WIDTH / 60)
-        ),
-        WHITE
-    );
-
-    roundedRect(
-        keluar.x,
-        keluar.y + 5,
-        keluar.w,
-        keluar.h,
-        20,
-        "#b9416e"
-    );
-
-    roundedRect(
-        keluar.x,
-        keluar.y,
-        keluar.w,
-        keluar.h,
-        20,
-        DPINK,
-        WHITE,
-        3
-    );
-
-    drawText(
-        "KEMBALI KE MENU",
-        keluar.x + keluar.w / 2,
-        keluar.y + keluar.h / 2,
-        Math.max(
-            17,
-            Math.min(25, WIDTH / 60)
-        ),
-        WHITE
-    );
-}
-
-function updateGame(delta) {
-    if (halaman !== "game" || gameOver) {
-        return;
-    }
-
-    const moveInterval = Math.max(
-        75,
-        1000 / speed
-    );
-
-    moveTimer += delta;
-
-    if (moveTimer >= moveInterval) {
-        moveTimer -= moveInterval;
-
-        if (moveTimer > moveInterval) {
-            moveTimer = 0;
+        if (
+            key === "arrowup" ||
+            key === "w"
+        ) {
+            event.preventDefault();
+            changeDirection("up");
         }
 
-        moveSnake();
+        if (
+            key === "arrowdown" ||
+            key === "s"
+        ) {
+            event.preventDefault();
+            changeDirection("down");
+        }
+
+        if (
+            key === "arrowleft" ||
+            key === "a"
+        ) {
+            event.preventDefault();
+            changeDirection("left");
+        }
+
+        if (
+            key === "arrowright" ||
+            key === "d"
+        ) {
+            event.preventDefault();
+            changeDirection("right");
+        }
+
+        if (
+            key === "enter" &&
+            halaman === "login"
+        ) {
+            halaman = "game";
+            resetGame();
+        }
+
+        if (
+            key === "escape" &&
+            halaman === "login"
+        ) {
+            window.close();
+        }
+
+        if (
+            key === "escape" &&
+            halaman === "game"
+        ) {
+            halaman = "login";
+            gameOver = false;
+        }
+
+        if (
+            key === "r" &&
+            gameOver
+        ) {
+            resetGame();
+        }
     }
-}
+);
 
 function gameLoop(timestamp) {
-    if (!running) {
-        return;
-    }
-
-    if (!lastTime) {
-        lastTime = timestamp;
-    }
-
-    let delta = timestamp - lastTime;
+    const delta = timestamp - lastTime;
     lastTime = timestamp;
 
-    if (delta > 100) {
-        delta = 100;
+    if (halaman === "game" && !gameOver) {
+        moveTimer += delta;
+
+        const interval = Math.max(
+            75,
+            1000 / speed
+        );
+
+        if (moveTimer >= interval) {
+            moveTimer = 0;
+            moveSnake();
+        }
     }
 
-    updateGame(delta);
+    ctx.clearRect(0, 0, W, H);
 
     if (halaman === "login") {
         drawLogin();
@@ -1719,273 +1499,4 @@ function gameLoop(timestamp) {
     requestAnimationFrame(gameLoop);
 }
 
-function startGame() {
-    resetGame();
-    halaman = "game";
-    gameOver = false;
-}
-
-function goMenu() {
-    halaman = "login";
-    gameOver = false;
-}
-
-function exitGame() {
-    running = false;
-
-    try {
-        window.close();
-    } catch (e) {}
-
-    document.body.innerHTML =
-        "<div style='display:flex;align-items:center;justify-content:center;width:100vw;height:100vh;font-family:Arial;font-size:24px;background:#e1f7dc;color:#419150;'>Game selesai</div>";
-}
-
-function handleCanvasClick(x, y) {
-    if (halaman === "login") {
-        const buttonW = Math.min(
-            350,
-            WIDTH - 60
-        );
-
-        const play = {
-            x: WIDTH / 2 - buttonW / 2,
-            y: HEIGHT / 2 + 45,
-            w: buttonW,
-            h: 65
-        };
-
-        const keluar = {
-            x: WIDTH / 2 - buttonW / 2,
-            y: HEIGHT / 2 + 125,
-            w: buttonW,
-            h: 65
-        };
-
-        if (pointInRect(x, y, play)) {
-            startGame();
-        }
-
-        else if (pointInRect(x, y, keluar)) {
-            exitGame();
-        }
-
-        return;
-    }
-
-    const menu = {
-        x: 12,
-        y: 8,
-        w: Math.min(125, Math.max(105, WIDTH / 6)),
-        h: 42
-    };
-
-    if (pointInRect(x, y, menu)) {
-        goMenu();
-        return;
-    }
-
-    if (handleControl(x, y)) {
-        return;
-    }
-
-    if (gameOver) {
-        const panelW = Math.min(
-            WIDTH - 30,
-            WIDTH <= 700 ? 400 : 480
-        );
-
-        const panelH = Math.min(
-            HEIGHT - 30,
-            WIDTH <= 700 ? 370 : 380
-        );
-
-        const panelY =
-            HEIGHT / 2 - panelH / 2;
-
-        const buttonW = Math.min(
-            290,
-            WIDTH - 70
-        );
-
-        const ulang = {
-            x: WIDTH / 2 - buttonW / 2,
-            y: panelY + panelH - 122,
-            w: buttonW,
-            h: 50
-        };
-
-        const keluar = {
-            x: WIDTH / 2 - buttonW / 2,
-            y: panelY + panelH - 62,
-            w: buttonW,
-            h: 50
-        };
-
-        if (pointInRect(x, y, ulang)) {
-            resetGame();
-        }
-
-        else if (pointInRect(x, y, keluar)) {
-            goMenu();
-        }
-    }
-}
-
-canvas.addEventListener("click", event => {
-    const rect = canvas.getBoundingClientRect();
-
-    const x =
-        (event.clientX - rect.left) *
-        WIDTH / rect.width;
-
-    const y =
-        (event.clientY - rect.top) *
-        HEIGHT / rect.height;
-
-    handleCanvasClick(x, y);
-});
-
-canvas.addEventListener(
-    "touchstart",
-    event => {
-        event.preventDefault();
-
-        const touch = event.touches[0];
-        const rect = canvas.getBoundingClientRect();
-
-        const x =
-            (touch.clientX - rect.left) *
-            WIDTH / rect.width;
-
-        const y =
-            (touch.clientY - rect.top) *
-            HEIGHT / rect.height;
-
-        handleCanvasClick(x, y);
-    },
-    { passive: false }
-);
-
-document.getElementById("up").addEventListener(
-    "touchstart",
-    e => {
-        e.preventDefault();
-        changeDirection({ x: 0, y: -GRID });
-    },
-    { passive: false }
-);
-
-document.getElementById("down").addEventListener(
-    "touchstart",
-    e => {
-        e.preventDefault();
-        changeDirection({ x: 0, y: GRID });
-    },
-    { passive: false }
-);
-
-document.getElementById("left").addEventListener(
-    "touchstart",
-    e => {
-        e.preventDefault();
-        changeDirection({ x: -GRID, y: 0 });
-    },
-    { passive: false }
-);
-
-document.getElementById("right").addEventListener(
-    "touchstart",
-    e => {
-        e.preventDefault();
-        changeDirection({ x: GRID, y: 0 });
-    },
-    { passive: false }
-);
-
-document.getElementById("up").addEventListener(
-    "click",
-    () => changeDirection({ x: 0, y: -GRID })
-);
-
-document.getElementById("down").addEventListener(
-    "click",
-    () => changeDirection({ x: 0, y: GRID })
-);
-
-document.getElementById("left").addEventListener(
-    "click",
-    () => changeDirection({ x: -GRID, y: 0 })
-);
-
-document.getElementById("right").addEventListener(
-    "click",
-    () => changeDirection({ x: GRID, y: 0 })
-);
-
-document.addEventListener("keydown", event => {
-    if (event.key === "Escape") {
-        if (halaman === "game") {
-            goMenu();
-        } else {
-            exitGame();
-        }
-
-        return;
-    }
-
-    if (halaman === "login") {
-        if (event.key === "Enter") {
-            startGame();
-        }
-
-        return;
-    }
-
-    if (gameOver) {
-        return;
-    }
-
-    if (
-        event.key === "ArrowUp" ||
-        event.key.toLowerCase() === "w"
-    ) {
-        changeDirection({
-            x: 0,
-            y: -GRID
-        });
-    }
-
-    else if (
-        event.key === "ArrowDown" ||
-        event.key.toLowerCase() === "s"
-    ) {
-        changeDirection({
-            x: 0,
-            y: GRID
-        });
-    }
-
-    else if (
-        event.key === "ArrowLeft" ||
-        event.key.toLowerCase() === "a"
-    ) {
-        changeDirection({
-            x: -GRID,
-            y: 0
-        });
-    }
-
-    else if (
-        event.key === "ArrowRight" ||
-        event.key.toLowerCase() === "d"
-    ) {
-        changeDirection({
-            x: GRID,
-            y: 0
-        });
-    }
-});
-
-resetGame();
 requestAnimationFrame(gameLoop);
