@@ -1108,24 +1108,43 @@ function resetGame() {
     ensureFoods();
 }
 
+/*
+ * FIX: area spawn makanan sebelumnya dihitung dari getFieldTop() (yang
+ * formulanya menyempit drastis di layar mobile dengan H kecil) dan margin
+ * bawah fixed (H - 190). Di HP, ini membuat area valid untuk makanan hanya
+ * berupa pita sempit beberapa baris grid saja, sehingga saat ular memanjang
+ * (sekitar skor 5-6), badan ular sudah cukup untuk mengisi/mengepung area
+ * sempit itu -> ensureFoods() gagal menaruh makanan baru -> skor stuck.
+ *
+ * Perbaikan: hitung area top/bottom secara proporsional terhadap tinggi
+ * layar aktual (H) dan ukuran tombol kontrol aktual (getControlSize()),
+ * bukan angka konstan. Ini membuat area spawn selalu proporsional dan
+ * cukup luas di semua ukuran layar (mobile maupun desktop).
+ */
 function randomFoodPosition() {
-    const top = Math.floor(
-        (getFieldTop() + 30) / GRID
-    ) * GRID;
+    const headerH = 75; // tinggi area header (menu/nama/speed/skor)
+    const controlH = getControlSize() * 2.6; // ruang aman di atas tombol kontrol
 
-    const bottom = Math.floor(
-        (H - 190) / GRID
-    ) * GRID;
+    let top = Math.ceil(headerH / GRID) * GRID;
+    let bottom = Math.floor((H - controlH) / GRID) * GRID;
+
+    // fallback tambahan: kalau layar sangat pendek, tetap sisakan
+    // minimal beberapa baris grid di tengah layar supaya makanan
+    // selalu bisa muncul dan game tidak pernah "buntu".
+    if (bottom - top < GRID * 3) {
+        top = Math.ceil((H * 0.18) / GRID) * GRID;
+        bottom = Math.floor((H * 0.85) / GRID) * GRID;
+    }
+
+    if (bottom <= top) {
+        return null;
+    }
 
     const maxX = Math.floor(
         (W - GRID) / GRID
     ) * GRID;
 
     const candidates = [];
-
-    if (bottom <= top) {
-        return null;
-    }
 
     for (let y = top; y <= bottom; y += GRID) {
         for (let x = 0; x <= maxX; x += GRID) {
