@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Snake of Jura</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- LOGIN -->
+    <div id="loginScreen" class="screen">
+
+        <h1>SNAKE</h1>
+        <h2>Snake of Jura</h2>
+
+        <div id="cuteSnake">
+            <div class="snake-head">
+                <span class="eye left-eye"></span>
+                <span class="eye right-eye"></span>
+                <span class="cheek left-cheek"></span>
+                <span class="cheek right-cheek"></span>
+                <span class="mouth"></span>
+            </div>
+
+            <div class="snake-body blue"></div>
+            <div class="snake-body purple"></div>
+        </div>
+
+        <p>Ayo bantu ular mencari makanan!</p>
+
+        <button id="playButton">MULAI GAME</button>
+        <button id="exitButton">KELUAR</button>
+
+    </div>
+
+
+    <!-- GAME UI -->
+    <div id="gameUI" class="hidden">
+
+        <button id="menuButton">MENU</button>
+
+        <div id="playerName">Pemain</div>
+
+        <div id="speedBox">
+            SPEED 5
+        </div>
+
+        <div id="scoreBox">
+            SKOR 0
+        </div>
+
+
+        <!-- JOYSTICK -->
+        <div id="controls">
+
+            <button data-direction="up">▲</button>
+
+            <button data-direction="left">◀</button>
+
+            <button data-direction="down">▼</button>
+
+            <button data-direction="right">▶</button>
+
+        </div>
+
+    </div>
+
+
+    <!-- GAME OVER -->
+    <div id="gameOver" class="hidden">
+
+        <div class="panel">
+
+            <div class="heart">♥</div>
+            <div class="heart right">♥</div>
+
+            <h2>GAME OVER</h2>
+
+            <div class="info">
+                SKOR <span id="finalScore">0</span>
+            </div>
+
+            <div class="info speed">
+                SPEED <span id="finalSpeed">5</span>
+            </div>
+
+            <button id="againButton">
+                MAIN LAGI
+            </button>
+
+            <button id="backButton">
+                KEMBALI KE MENU
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <script src="script.js"></script>
+
+</body>
+</html>
